@@ -41,6 +41,7 @@
     .legend-blue { background:#2563eb; }
     .legend-yellow { background:#f2b01e; }
     .legend-black { background:#111827; }
+    .legend-lime { background:#9bdc28; }
     .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
     .route h3 { margin:0 0 9px; font-size:14px; }
     .route input { width:100%; margin-bottom:7px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
@@ -88,7 +89,7 @@
       <div class="status">Данные обновляются при каждом открытии страницы.</div>
     </aside>
     <div id="map"></div>
-    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Project</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span></div>
+    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Project</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-lime"></i><b>Active</b></span></div>
   </main>
 
   <script>
@@ -171,7 +172,7 @@
       list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
     }
     function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
-    function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const completed = status.includes('completed'); const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : location.locationType.toUpperCase() === 'WH' ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
+    function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const active = location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations'); const completed = status.includes('completed'); const isWh = location.locationType.toUpperCase() === 'WH'; const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : active && !isWh ? '#9bdc28' : isWh ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
     function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
     function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
     function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
