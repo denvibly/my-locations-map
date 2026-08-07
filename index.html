@@ -116,7 +116,7 @@
       const headers = rows[0].map(normalizeHeader);
       const exact = name => headers.findIndex(header => header === name);
       const find = (names) => headers.findIndex(h => names.some(n => h.includes(n)));
-      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = exact('status') >= 0 ? exact('status') : find(['status','статус']), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = find(['active']), mapsI = find(['googlemaps','maps']), startI = exact('start') >= 0 ? exact('start') : find(['start']);
+      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = headers.length > 20 ? 20 : (exact('status') >= 0 ? exact('status') : find(['status','статус'])), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = headers.length > 23 ? 23 : find(['active']), mapsI = find(['googlemaps','maps']), startI = headers.length > 25 ? 25 : (exact('start') >= 0 ? exact('start') : find(['start']));
       return rows.slice(1).map((row, rowIndex) => {
         const sheetRow = rowIndex + 2;
         const name = row[nameI >= 0 ? nameI : 0] || row[projectI >= 0 ? projectI : 0] || 'Без названия';
