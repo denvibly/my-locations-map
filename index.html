@@ -29,6 +29,9 @@
     .filter-tags { display:flex; flex-wrap:wrap; gap:4px; }
     .filter-tag { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:99px; background:#c8ebe3; font-size:12px; }
     .filter-tag button { border:0; padding:0; background:transparent; color:#0f766e; font-size:15px; line-height:1; cursor:pointer; }
+    .location-toggles { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+    .location-toggle { display:flex; gap:9px; align-items:center; padding:8px 10px; border-radius:9px; background:#f7faf9; font-size:13px; cursor:pointer; }
+    .location-toggle input { width:17px; height:17px; accent-color:var(--accent); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
     .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
     .legend span { white-space:nowrap; }
@@ -49,7 +52,7 @@
     .route input:active { cursor:grabbing; }
     .route-point-row { display:flex; gap:6px; align-items:center; }
     .route-point-row input { flex:1; }
-    .route .remove-route-point { flex:0 0 36px; width:36px; height:36px; margin-bottom:7px; padding:0; border:0; border-radius:9px; background:#f1f4f4; color:#6c7c84; font-size:22px; cursor:pointer; }
+    .route .remove-route-point, .route .clear-route-point { flex:0 0 36px; width:36px; height:36px; margin-bottom:7px; padding:0; border:0; border-radius:9px; background:#f1f4f4; color:#6c7c84; font-size:22px; cursor:pointer; }
     .remove-route-point:hover { background:#fde8e7; color:#b42318; }
     .summary { display:flex; justify-content:space-between; align-items:center; margin:20px 0 10px; font-size:13px; color:var(--muted); }
     .badge { padding:5px 9px; border-radius:99px; background:var(--soft); color:var(--accent); font-weight:700; }
@@ -70,6 +73,10 @@
       <input id="search" class="search" type="search" placeholder="Поиск по названию и примечанию…" />
       <h2 class="filters-title">Filters</h2>
       <div id="filters" class="filters"></div>
+      <div class="location-toggles">
+        <label class="location-toggle"><input id="activeLocationsToggle" type="checkbox"> <span>Active Locations</span></label>
+        <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox" checked> <span>Show all locations</span></label>
+      </div>
       <div class="route">
         <h3>Маршрут</h3>
         <div id="routePoints"></div>
@@ -125,19 +132,21 @@
       return fromRows(parseCsv(await response.text()));
     }
 
-    const filterFields = [{key:'status', label:'Status'}, {key:'active', label:'Active'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}, {key:'start', label:'Start'}];
+    const filterFields = [{key:'status', label:'Status'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}, {key:'start', label:'Start'}];
     function setupFilters() {
       document.querySelector('#filters').innerHTML = filterFields.map(field => `<div class="filter-menu" data-menu="${field.key}"><button type="button" class="filter-button" data-filter-button="${field.key}">${field.label}</button><div class="filter-panel"><input class="filter-search" data-filter-search="${field.key}" placeholder="Поиск ${field.label}…">${[...new Set(locations.map(x => x[field.key]).filter(Boolean))].sort((a,b) => a.localeCompare(b)).map(value => `<label class="filter-option"><input type="checkbox" data-filter-value="${field.key}" value="${escapeHtml(value)}"><span>${escapeHtml(value)}</span></label>`).join('')}</div></div>`).join('');
       document.querySelectorAll('[data-filter-button]').forEach(button => button.addEventListener('click', () => { const menu = button.closest('.filter-menu'); document.querySelectorAll('.filter-menu.open').forEach(other => { if (other !== menu) other.classList.remove('open'); }); menu.classList.toggle('open'); }));
       document.addEventListener('click', event => { if (!event.target.closest('.filter-menu')) document.querySelectorAll('.filter-menu.open').forEach(menu => menu.classList.remove('open')); });
       document.querySelectorAll('[data-filter-value]').forEach(input => input.addEventListener('change', () => { const key = input.dataset.filterValue; const values = [...document.querySelectorAll(`[data-filter-value="${key}"]:checked`)].map(item => item.value); const button = document.querySelector(`[data-filter-button="${key}"]`); button.classList.toggle('selected', values.length > 0); button.innerHTML = values.length ? `<span class="filter-tags">${values.map(value => `<span class="filter-tag">${escapeHtml(value)}<button type="button" data-remove-filter="${escapeHtml(key)}" data-remove-value="${escapeHtml(value)}" aria-label="Убрать фильтр">×</button></span>`).join('')}</span>` : filterFields.find(field => field.key === key).label; document.querySelectorAll('[data-remove-filter]').forEach(remove => remove.addEventListener('click', event => { event.stopPropagation(); const checkbox = [...document.querySelectorAll(`[data-filter-value="${remove.dataset.removeFilter}"]`)].find(item => item.value === remove.dataset.removeValue); if (checkbox) { checkbox.checked = false; checkbox.dispatchEvent(new Event('change')); } })); renderList(document.querySelector('#search').value); }));
       document.querySelectorAll('[data-filter-search]').forEach(input => input.addEventListener('input', () => { const query = input.value.toLowerCase(); const key = input.dataset.filterSearch; document.querySelectorAll(`[data-filter-value="${key}"]`).forEach(box => { box.closest('.filter-option').style.display = box.value.toLowerCase().includes(query) ? 'flex' : 'none'; }); }));
-      const routeInput = number => `<div class="route-point-row"><input type="text" draggable="true" data-route-point="${number}" list="routeLocations" placeholder="${number}. Точка маршрута" autocomplete="off">${number > 2 ? '<button type="button" class="remove-route-point" aria-label="Удалить точку">×</button>' : ''}</div>`;
+      const routeInput = number => `<div class="route-point-row"><input type="text" draggable="true" data-route-point="${number}" list="routeLocations" placeholder="${number}. Точка маршрута" autocomplete="off"><button type="button" class="${number > 2 ? 'remove-route-point' : 'clear-route-point'}" aria-label="${number > 2 ? 'Удалить точку' : 'Очистить точку'}">×</button></div>`;
       document.querySelector('#routePoints').innerHTML = routeInput(1) + routeInput(2) + '<datalist id="routeLocations"></datalist><button type="button" class="add-route" id="addRoutePoint">+ Ещё</button>';
       const routeLocations = document.querySelector('#routeLocations');
       locations.forEach(location => { const option = document.createElement('option'); option.value = location.name; routeLocations.appendChild(option); });
       document.querySelector('#addRoutePoint').addEventListener('click', () => { const current = document.querySelectorAll('[data-route-point]').length; const row = document.createElement('div'); row.className = 'route-point-row'; row.innerHTML = `<input type="text" draggable="true" data-route-point="${current + 1}" list="routeLocations" placeholder="${current + 1}. Точка маршрута" autocomplete="off"><button type="button" class="remove-route-point" aria-label="Удалить точку">×</button>`; document.querySelector('#routePoints').insertBefore(row, document.querySelector('#addRoutePoint')); });
-      document.querySelector('#routePoints').addEventListener('click', event => { if (!event.target.matches('.remove-route-point')) return; event.target.closest('.route-point-row').remove(); [...document.querySelectorAll('[data-route-point]')].forEach((input, index) => { input.dataset.routePoint = index + 1; input.placeholder = `${index + 1}. Точка маршрута`; }); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0)); });
+      document.querySelector('#routePoints').addEventListener('click', event => { if (event.target.matches('.clear-route-point')) { const input = event.target.closest('.route-point-row').querySelector('[data-route-point]'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles:true })); return; } if (!event.target.matches('.remove-route-point')) return; event.target.closest('.route-point-row').remove(); [...document.querySelectorAll('[data-route-point]')].forEach((input, index) => { input.dataset.routePoint = index + 1; input.placeholder = `${index + 1}. Точка маршрута`; }); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0)); });
+      document.querySelector('#activeLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#showAllLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
+      document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#activeLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
       const routePoints = document.querySelector('#routePoints');
       const highlightRouteInput = input => { const index = locations.findIndex(location => location.name === input.value.trim()); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(routeInput => locations.findIndex(location => location.name === routeInput.value.trim())).filter(routeIndex => routeIndex >= 0)); markers.forEach((marker, markerIndex) => marker.setIcon(markerIcon(locations[markerIndex], markerIndex === index))); renderList(document.querySelector('#search').value); };
       routePoints.addEventListener('input', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
@@ -151,8 +160,11 @@
     }
     function renderList(query = '') {
       const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
-      const filtered = locations.filter(x => `${x.name} ${x.note}`.toLowerCase().includes(query.toLowerCase()) && filterFields.every(field => !selected[field.key].length || selected[field.key].includes(x[field.key])));
-      const visible = new Set([...filtered, ...[...routeSelection].map(index => locations[index]).filter(Boolean)]);
+      const showAll = document.querySelector('#showAllLocationsToggle')?.checked ?? true;
+      const activeOnly = document.querySelector('#activeLocationsToggle')?.checked ?? false;
+      const displayLocations = showAll || activeOnly || routeSelection.size > 0;
+      const filtered = showAll || activeOnly ? locations.filter(x => `${x.name} ${x.note}`.toLowerCase().includes(query.toLowerCase()) && (!activeOnly || x.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations')) && filterFields.every(field => !selected[field.key].length || selected[field.key].includes(x[field.key]))) : [];
+      const visible = new Set([...filtered, ...(displayLocations ? [...routeSelection].map(index => locations[index]).filter(Boolean) : [])]);
       markers.forEach((marker, index) => marker.setVisible(visible.has(locations[index])));
       document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = `${locations.length} ${locations.length === 1 ? 'локация' : 'локаций'}`;
       const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.marketState ? `<strong>Market/Carrier States:</strong> ${escapeHtml(x.marketState)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
