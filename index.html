@@ -29,6 +29,7 @@
     .filter-tags { display:flex; flex-wrap:wrap; gap:4px; }
     .filter-tag { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:99px; background:#c8ebe3; font-size:12px; }
     .filter-tag button { border:0; padding:0; background:transparent; color:#0f766e; font-size:15px; line-height:1; cursor:pointer; }
+    .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
     .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
     .legend span { white-space:nowrap; }
     .legend b { color:var(--ink); }
@@ -63,6 +64,7 @@
   <main class="app">
     <aside>
       <input id="search" class="search" type="search" placeholder="Поиск по названию и примечанию…" />
+      <h2 class="filters-title">Filters</h2>
       <div id="filters" class="filters"></div>
       <div class="route">
         <h3>Маршрут</h3>
@@ -75,7 +77,7 @@
       <div class="status">Данные обновляются при каждом открытии страницы.</div>
     </aside>
     <div id="map"></div>
-    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Standard</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Status issue</b></span><span><i class="legend-icon legend-black"></i><b>CX Not Started</b></span></div>
+    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Project</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span></div>
   </main>
 
   <script>
@@ -88,7 +90,7 @@
     const fallbackLocations = [
       { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
     ];
-    let map, infoWindow, markers = [], locations = [];
+    let map, infoWindow, markers = [], locations = [], routeSelection = new Set();
 
     function parseCsv(text) {
       const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
@@ -102,14 +104,14 @@
       const headers = rows[0].map(normalizeHeader);
       const exact = name => headers.findIndex(header => header === name);
       const find = (names) => headers.findIndex(h => names.some(n => h.includes(n)));
-      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = exact('status') >= 0 ? exact('status') : find(['status','статус']), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = find(['active']), mapsI = find(['googlemaps','maps']);
+      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = exact('status') >= 0 ? exact('status') : find(['status','статус']), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = find(['active']), mapsI = find(['googlemaps','maps']), startI = exact('start') >= 0 ? exact('start') : find(['start']);
       return rows.slice(1).map((row, rowIndex) => {
         const sheetRow = rowIndex + 2;
         const name = row[nameI >= 0 ? nameI : 0] || row[projectI >= 0 ? projectI : 0] || 'Без названия';
         const details = [projectI >= 0 && row[projectI], addressI >= 0 && row[addressI], statusI >= 0 && row[statusI], activeI >= 0 && row[activeI], noteI >= 0 && row[noteI]].filter(Boolean);
         const value = index => index >= 0 ? String(row[index] || '').trim() : '';
         const address = value(addressI), mapsLink = value(mapsI) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row[latI]},${row[lngI]}`)}`;
-        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), project:value(projectI) };
+        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), project:value(projectI), start:value(startI) };
       }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng) && x.hasAddress);
     }
 
@@ -119,7 +121,7 @@
       return fromRows(parseCsv(await response.text()));
     }
 
-    const filterFields = [{key:'status', label:'Status'}, {key:'active', label:'Active'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}];
+    const filterFields = [{key:'status', label:'Status'}, {key:'active', label:'Active'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}, {key:'start', label:'Start'}];
     function setupFilters() {
       document.querySelector('#filters').innerHTML = filterFields.map(field => `<div class="filter-menu" data-menu="${field.key}"><button type="button" class="filter-button" data-filter-button="${field.key}">${field.label}</button><div class="filter-panel"><input class="filter-search" data-filter-search="${field.key}" placeholder="Поиск ${field.label}…">${[...new Set(locations.map(x => x[field.key]).filter(Boolean))].sort((a,b) => a.localeCompare(b)).map(value => `<label class="filter-option"><input type="checkbox" data-filter-value="${field.key}" value="${escapeHtml(value)}"><span>${escapeHtml(value)}</span></label>`).join('')}</div></div>`).join('');
       document.querySelectorAll('[data-filter-button]').forEach(button => button.addEventListener('click', () => { const menu = button.closest('.filter-menu'); document.querySelectorAll('.filter-menu.open').forEach(other => { if (other !== menu) other.classList.remove('open'); }); menu.classList.toggle('open'); }));
@@ -131,7 +133,7 @@
       locations.forEach(location => { const option = document.createElement('option'); option.value = location.name; routeLocations.appendChild(option); });
       document.querySelector('#addRoutePoint').addEventListener('click', () => { const current = document.querySelectorAll('[data-route-point]').length; if (current >= 5) return; const input = document.createElement('input'); input.type = 'text'; input.draggable = true; input.dataset.routePoint = current + 1; input.setAttribute('list', 'routeLocations'); input.placeholder = `${current + 1}. Точка маршрута`; input.autocomplete = 'off'; document.querySelector('#routePoints').insertBefore(input, document.querySelector('#addRoutePoint')); if (current + 1 === 5) document.querySelector('#addRoutePoint').style.display = 'none'; });
       const routePoints = document.querySelector('#routePoints');
-      const highlightRouteInput = input => { const index = locations.findIndex(location => location.name === input.value.trim()); markers.forEach((marker, markerIndex) => marker.setIcon(markerIcon(locations[markerIndex], markerIndex === index))); };
+      const highlightRouteInput = input => { const index = locations.findIndex(location => location.name === input.value.trim()); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(routeInput => locations.findIndex(location => location.name === routeInput.value.trim())).filter(routeIndex => routeIndex >= 0)); markers.forEach((marker, markerIndex) => marker.setIcon(markerIcon(locations[markerIndex], markerIndex === index))); renderList(document.querySelector('#search').value); };
       routePoints.addEventListener('input', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
       routePoints.addEventListener('focusin', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
       routePoints.addEventListener('click', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
@@ -144,16 +146,16 @@
     function renderList(query = '') {
       const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
       const filtered = locations.filter(x => `${x.name} ${x.note}`.toLowerCase().includes(query.toLowerCase()) && filterFields.every(field => !selected[field.key].length || selected[field.key].includes(x[field.key])));
-      const visible = new Set(filtered);
+      const visible = new Set([...filtered, ...[...routeSelection].map(index => locations[index]).filter(Boolean)]);
       markers.forEach((marker, index) => marker.setVisible(visible.has(locations[index])));
       document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = `${locations.length} ${locations.length === 1 ? 'локация' : 'локаций'}`;
-      const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
+      const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.marketState ? `<strong>Market/Carrier States:</strong> ${escapeHtml(x.marketState)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
       list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
     }
     function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
     function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const completed = status.includes('completed'); const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : location.locationType.toUpperCase() === 'WH' ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
     function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
-    function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
+    function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
     function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     document.querySelector('#search').addEventListener('input', e => renderList(e.target.value));
