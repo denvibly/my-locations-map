@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <title>Мои локации</title>
+  <style>
+    :root { --ink:#10212b; --muted:#6c7c84; --line:#e4ecef; --accent:#0f766e; --soft:#eef8f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:#f7faf9; }
+    .app { display:grid; grid-template-columns:360px 1fr; height:100vh; }
+    aside { padding:28px 22px; background:#fff; border-right:1px solid var(--line); overflow:auto; }
+    .eyebrow { color:var(--accent); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:8px 0 6px; font-size:30px; line-height:1.05; letter-spacing:-.04em; }
+    .intro { margin:0 0 24px; color:var(--muted); font-size:14px; line-height:1.5; }
+    .search { width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:12px; outline:none; font:inherit; }
+    .search:focus { border-color:var(--accent); box-shadow:0 0 0 3px #d8f0eb; }
+    .filters { display:grid; gap:8px; margin-top:10px; }
+    .filter-menu { position:relative; }
+    .filter-button { width:100%; min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+    .filter-button.selected { border-color:#0f766e; background:#e5f6f1; color:#0f766e; font-weight:700; }
+    .filter-panel { display:none; position:absolute; z-index:10; top:46px; left:0; right:0; max-height:220px; overflow:auto; padding:6px; border:1px solid #b8d8d0; border-radius:10px; background:#fff; box-shadow:0 8px 20px #153b3822; }
+    .filter-menu.open .filter-panel { display:block; }
+    .filter-option { display:flex; gap:8px; align-items:center; padding:8px; border-radius:7px; color:var(--ink); font-size:13px; cursor:pointer; }
+    .filter-option:hover { background:var(--soft); }
+    .filter-search { width:100%; margin-bottom:5px; padding:8px 9px; border:1px solid var(--line); border-radius:7px; font:inherit; }
+    .filter-option input { accent-color:var(--accent); }
+    .filter-tags { display:flex; flex-wrap:wrap; gap:4px; }
+    .filter-tag { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:99px; background:#c8ebe3; font-size:12px; }
+    .filter-tag button { border:0; padding:0; background:transparent; color:#0f766e; font-size:15px; line-height:1; cursor:pointer; }
+    .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
+    .legend span { white-space:nowrap; }
+    .legend b { color:var(--ink); }
+    .legend-icon { display:inline-block; width:12px; height:12px; margin-right:4px; border:2px solid #fff; border-radius:50% 50% 50% 0; box-shadow:0 0 0 1px #84949a; transform:rotate(-45deg); vertical-align:-2px; }
+    .legend-red { background:#ef3f35; }
+    .legend-blue { background:#2563eb; }
+    .legend-yellow { background:#f2b01e; }
+    .legend-black { background:#111827; }
+    .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+    .route h3 { margin:0 0 9px; font-size:14px; }
+    .route input { width:100%; margin-bottom:7px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
+    .route button { width:100%; padding:10px; border:0; border-radius:9px; background:var(--accent); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+    .route button.secondary { margin-top:7px; background:#eaf2f0; color:var(--accent); }
+    .route-result { margin-top:9px; color:var(--muted); font-size:12px; line-height:1.4; }
+    .add-route { width:100%; margin:2px 0 8px; padding:8px; border:1px dashed #9bcfc3; border-radius:9px; background:#f0faf7; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
+    .route input { cursor:grab; }
+    .route input:active { cursor:grabbing; }
+    .summary { display:flex; justify-content:space-between; align-items:center; margin:20px 0 10px; font-size:13px; color:var(--muted); }
+    .badge { padding:5px 9px; border-radius:99px; background:var(--soft); color:var(--accent); font-weight:700; }
+    .places { display:grid; gap:10px; }
+    .place { padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff; cursor:pointer; transition:.15s ease; }
+    .place:hover, .place.active { border-color:#9bd7ca; background:var(--soft); transform:translateY(-1px); }
+    .place h2 { margin:0 0 5px; font-size:15px; }
+    .place p { margin:0; color:var(--muted); font-size:13px; line-height:1.4; }
+    .empty { padding:18px 4px; color:var(--muted); font-size:14px; }
+    #map { min-height:100%; }
+    .status { margin-top:18px; color:var(--muted); font-size:12px; }
+    @media (max-width: 760px) { .app { grid-template-columns:1fr; grid-template-rows:44vh 56vh; } aside { order:2; border-right:0; border-top:1px solid var(--line); padding:20px; } #map { order:1; min-height:44vh; } .legend { left:0; gap:8px; overflow:auto; justify-content:flex-start; font-size:10px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside>
+      <input id="search" class="search" type="search" placeholder="Поиск по названию и примечанию…" />
+      <div id="filters" class="filters"></div>
+      <div class="route">
+        <h3>Маршрут</h3>
+        <div id="routePoints"></div>
+        <button id="openRoute" class="secondary">Открыть в Google Maps</button>
+        <div id="routeResult" class="route-result">Выберите точки по порядку посещения.</div>
+      </div>
+      <div class="summary"><span id="status">Загрузка локаций…</span><span id="count" class="badge">0</span></div>
+      <section id="places" class="places"></section>
+      <div class="status">Данные обновляются при каждом открытии страницы.</div>
+    </aside>
+    <div id="map"></div>
+    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Standard</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Status issue</b></span><span><i class="legend-icon legend-black"></i><b>CX Not Started</b></span></div>
+  </main>
+
+  <script>
+    // Замените два значения ниже на свои данные.
+    const CONFIG = {
+      googleMapsApiKey: 'AIzaSyCg5M_iG5gLdOgNH9baLh707ihpYPpjTOQ',
+      sheetCsvUrl: 'https://docs.google.com/spreadsheets/d/1lVcZV4bHwlVEJVNOXTv2WStc6QXfCPocy71v8YSM9C0/export?format=csv&gid=1292317977'
+    };
+
+    const fallbackLocations = [
+      { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
+    ];
+    let map, infoWindow, markers = [], locations = [];
+
+    function parseCsv(text) {
+      const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
+      while ((match = re.exec(text))) { let value = match[1]; if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1).replace(/""/g, '"'); row.push(value.trim()); if (match[2] === '\n') { rows.push(row); row = []; } if (!match[2]) break; }
+      if (row.length && row.some(Boolean)) rows.push(row); return rows;
+    }
+
+    function normalizeHeader(header) { return String(header).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]/g, ''); }
+    function fromRows(rows) {
+      if (rows.length < 2) return [];
+      const headers = rows[0].map(normalizeHeader);
+      const exact = name => headers.findIndex(header => header === name);
+      const find = (names) => headers.findIndex(h => names.some(n => h.includes(n)));
+      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = exact('status') >= 0 ? exact('status') : find(['status','статус']), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = find(['active']), mapsI = find(['googlemaps','maps']);
+      return rows.slice(1).map((row, rowIndex) => {
+        const sheetRow = rowIndex + 2;
+        const name = row[nameI >= 0 ? nameI : 0] || row[projectI >= 0 ? projectI : 0] || 'Без названия';
+        const details = [projectI >= 0 && row[projectI], addressI >= 0 && row[addressI], statusI >= 0 && row[statusI], activeI >= 0 && row[activeI], noteI >= 0 && row[noteI]].filter(Boolean);
+        const value = index => index >= 0 ? String(row[index] || '').trim() : '';
+        const address = value(addressI), mapsLink = value(mapsI) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row[latI]},${row[lngI]}`)}`;
+        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), project:value(projectI) };
+      }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng) && x.hasAddress);
+    }
+
+    async function loadLocations() {
+      if (CONFIG.sheetCsvUrl.includes('PASTE_SHEET_ID')) return fallbackLocations;
+      const response = await fetch(CONFIG.sheetCsvUrl); if (!response.ok) throw new Error('Не удалось загрузить таблицу');
+      return fromRows(parseCsv(await response.text()));
+    }
+
+    const filterFields = [{key:'status', label:'Status'}, {key:'active', label:'Active'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}];
+    function setupFilters() {
+      document.querySelector('#filters').innerHTML = filterFields.map(field => `<div class="filter-menu" data-menu="${field.key}"><button type="button" class="filter-button" data-filter-button="${field.key}">${field.label}</button><div class="filter-panel"><input class="filter-search" data-filter-search="${field.key}" placeholder="Поиск ${field.label}…">${[...new Set(locations.map(x => x[field.key]).filter(Boolean))].sort((a,b) => a.localeCompare(b)).map(value => `<label class="filter-option"><input type="checkbox" data-filter-value="${field.key}" value="${escapeHtml(value)}"><span>${escapeHtml(value)}</span></label>`).join('')}</div></div>`).join('');
+      document.querySelectorAll('[data-filter-button]').forEach(button => button.addEventListener('click', () => { const menu = button.closest('.filter-menu'); document.querySelectorAll('.filter-menu.open').forEach(other => { if (other !== menu) other.classList.remove('open'); }); menu.classList.toggle('open'); }));
+      document.addEventListener('click', event => { if (!event.target.closest('.filter-menu')) document.querySelectorAll('.filter-menu.open').forEach(menu => menu.classList.remove('open')); });
+      document.querySelectorAll('[data-filter-value]').forEach(input => input.addEventListener('change', () => { const key = input.dataset.filterValue; const values = [...document.querySelectorAll(`[data-filter-value="${key}"]:checked`)].map(item => item.value); const button = document.querySelector(`[data-filter-button="${key}"]`); button.classList.toggle('selected', values.length > 0); button.innerHTML = values.length ? `<span class="filter-tags">${values.map(value => `<span class="filter-tag">${escapeHtml(value)}<button type="button" data-remove-filter="${escapeHtml(key)}" data-remove-value="${escapeHtml(value)}" aria-label="Убрать фильтр">×</button></span>`).join('')}</span>` : filterFields.find(field => field.key === key).label; document.querySelectorAll('[data-remove-filter]').forEach(remove => remove.addEventListener('click', event => { event.stopPropagation(); const checkbox = [...document.querySelectorAll(`[data-filter-value="${remove.dataset.removeFilter}"]`)].find(item => item.value === remove.dataset.removeValue); if (checkbox) { checkbox.checked = false; checkbox.dispatchEvent(new Event('change')); } })); renderList(document.querySelector('#search').value); }));
+      document.querySelectorAll('[data-filter-search]').forEach(input => input.addEventListener('input', () => { const query = input.value.toLowerCase(); const key = input.dataset.filterSearch; document.querySelectorAll(`[data-filter-value="${key}"]`).forEach(box => { box.closest('.filter-option').style.display = box.value.toLowerCase().includes(query) ? 'flex' : 'none'; }); }));
+      document.querySelector('#routePoints').innerHTML = [1,2].map(number => `<input type="text" draggable="true" data-route-point="${number}" list="routeLocations" placeholder="${number}. Точка маршрута" autocomplete="off">`).join('') + '<datalist id="routeLocations"></datalist><button type="button" class="add-route" id="addRoutePoint">+ Ещё</button>';
+      const routeLocations = document.querySelector('#routeLocations');
+      locations.forEach(location => { const option = document.createElement('option'); option.value = location.name; routeLocations.appendChild(option); });
+      document.querySelector('#addRoutePoint').addEventListener('click', () => { const current = document.querySelectorAll('[data-route-point]').length; if (current >= 5) return; const input = document.createElement('input'); input.type = 'text'; input.draggable = true; input.dataset.routePoint = current + 1; input.setAttribute('list', 'routeLocations'); input.placeholder = `${current + 1}. Точка маршрута`; input.autocomplete = 'off'; document.querySelector('#routePoints').insertBefore(input, document.querySelector('#addRoutePoint')); if (current + 1 === 5) document.querySelector('#addRoutePoint').style.display = 'none'; });
+      const routePoints = document.querySelector('#routePoints');
+      const highlightRouteInput = input => { const index = locations.findIndex(location => location.name === input.value.trim()); markers.forEach((marker, markerIndex) => marker.setIcon(markerIcon(locations[markerIndex], markerIndex === index))); };
+      routePoints.addEventListener('input', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
+      routePoints.addEventListener('focusin', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
+      routePoints.addEventListener('click', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
+      routePoints.addEventListener('dragstart', event => { if (event.target.matches('[data-route-point]')) { event.dataTransfer.setData('text/plain', event.target.dataset.routePoint); event.target.classList.add('dragging'); } });
+      routePoints.addEventListener('dragend', event => event.target.classList.remove('dragging'));
+      routePoints.addEventListener('dragover', event => { if (event.target.matches('[data-route-point]')) event.preventDefault(); });
+      routePoints.addEventListener('drop', event => { const target = event.target.closest('[data-route-point]'); if (!target) return; event.preventDefault(); const source = [...routePoints.querySelectorAll('[data-route-point]')].find(input => input.dataset.routePoint === event.dataTransfer.getData('text/plain')); if (!source || source === target) return; const sourceValue = source.value; source.value = target.value; target.value = sourceValue; });
+      document.querySelector('#openRoute').addEventListener('click', openRouteInGoogleMaps);
+    }
+    function renderList(query = '') {
+      const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
+      const filtered = locations.filter(x => `${x.name} ${x.note}`.toLowerCase().includes(query.toLowerCase()) && filterFields.every(field => !selected[field.key].length || selected[field.key].includes(x[field.key])));
+      const visible = new Set(filtered);
+      markers.forEach((marker, index) => marker.setVisible(visible.has(locations[index])));
+      document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = `${locations.length} ${locations.length === 1 ? 'локация' : 'локаций'}`;
+      const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
+      list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
+    }
+    function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+    function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const completed = status.includes('completed'); const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : location.locationType.toUpperCase() === 'WH' ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
+    function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
+    function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
+    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
+    window.initMap = initMap;
+    document.querySelector('#search').addEventListener('input', e => renderList(e.target.value));
+    window.gm_authFailure = () => { document.querySelector('#status').textContent = 'Google отклонил API key: включите Maps JavaScript API и проверьте ограничения ключа.'; };
+    function loadMapsScript() {
+      if (CONFIG.googleMapsApiKey.includes('PASTE_')) { document.querySelector('#status').textContent = 'Добавьте API-ключ'; return; }
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.googleMapsApiKey}&callback=initMap`;
+      script.async = true; script.defer = true;
+      script.onerror = () => { document.querySelector('#status').textContent = 'Google Maps API не загрузился. Проверьте ключ и разрешённые API.'; };
+      document.head.appendChild(script);
+      setTimeout(() => { if (!map) document.querySelector('#status').textContent = 'Карта не запустилась. Проверьте Maps JavaScript API, billing и ограничения API key.'; }, 8000);
+    }
+    loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = 'Таблица недоступна — показан пример'; renderList(); loadMapsScript(); });
+  </script>
+</body>
+</html>
