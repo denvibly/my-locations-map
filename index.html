@@ -8,19 +8,25 @@
   <style>
     :root { --ink:#10212b; --muted:#6c7c84; --line:#e4ecef; --accent:#0f766e; --soft:#eef8f5; }
     * { box-sizing:border-box; }
-    body { margin:0; color:var(--ink); font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:#f7faf9; }
+    body { margin:0; color:var(--ink); font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:linear-gradient(135deg,#eef8f5,#f8fbff 55%,#eef2ff); }
     .app { display:grid; grid-template-columns:360px 1fr; height:100vh; }
-    aside { padding:28px 22px; background:#fff; border-right:1px solid var(--line); overflow:auto; }
+    aside { padding:28px 22px; background:rgba(255,255,255,.78); border-right:1px solid rgba(255,255,255,.55); box-shadow:12px 0 28px rgba(15,23,42,.12), 0 1px 3px rgba(15,23,42,.08); backdrop-filter:blur(16px); overflow:auto; }
     .eyebrow { color:var(--accent); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
     h1 { margin:8px 0 6px; font-size:30px; line-height:1.05; letter-spacing:-.04em; }
     .intro { margin:0 0 24px; color:var(--muted); font-size:14px; line-height:1.5; }
-    .search { width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:12px; outline:none; font:inherit; }
+    .search { width:100%; padding:13px 14px; border:1px solid rgba(255,255,255,.65); border-radius:12px; outline:none; font:inherit; background:rgba(255,255,255,.64); box-shadow:0 8px 18px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter:blur(12px); }
     .search:focus { border-color:var(--accent); box-shadow:0 0 0 3px #d8f0eb; }
+    .find-hotel { width:108px; height:38px; margin:8px 0 12px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+    .find-hotel:hover { background:#0b5f59; }
+    .search-suggestions { display:none; position:relative; z-index:30; margin:-6px 0 8px; padding:5px; border:1px solid #b8d8d0; border-radius:10px; background:#fff; box-shadow:0 8px 20px #153b3822; }
+    .search-suggestions.visible { display:block; }
+    .search-suggestion { padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; }
+    .search-suggestion:hover { background:var(--soft); color:var(--accent); }
     .filters { display:grid; gap:8px; margin-top:10px; }
     .filter-menu { position:relative; }
-    .filter-button { width:100%; min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+    .filter-button { width:100%; min-height:42px; padding:9px 12px; border:1px solid rgba(255,255,255,.65); border-radius:10px; background:rgba(255,255,255,.62); color:var(--ink); font:inherit; text-align:left; cursor:pointer; box-shadow:0 6px 14px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter:blur(12px); }
     .filter-button.selected { border-color:#0f766e; background:#e5f6f1; color:#0f766e; font-weight:700; }
-    .filter-panel { display:none; position:absolute; z-index:10; top:46px; left:0; right:0; max-height:220px; overflow:auto; padding:6px; border:1px solid #b8d8d0; border-radius:10px; background:#fff; box-shadow:0 8px 20px #153b3822; }
+    .filter-panel { display:none; position:absolute; z-index:10; top:46px; left:0; right:0; max-height:220px; overflow:auto; padding:6px; border:1px solid rgba(255,255,255,.62); border-radius:10px; background:rgba(255,255,255,.82); box-shadow:0 18px 38px rgba(15,23,42,.18), 0 4px 10px rgba(15,23,42,.08); backdrop-filter:blur(16px); }
     .filter-menu.open .filter-panel { display:block; }
     .filter-option { display:flex; gap:8px; align-items:center; padding:8px; border-radius:7px; color:var(--ink); font-size:13px; cursor:pointer; }
     .filter-option:hover { background:var(--soft); }
@@ -58,7 +64,7 @@
     .summary { display:flex; justify-content:space-between; align-items:center; margin:20px 0 10px; font-size:13px; color:var(--muted); }
     .badge { padding:5px 9px; border-radius:99px; background:var(--soft); color:var(--accent); font-weight:700; }
     .places { display:grid; gap:10px; }
-    .place { padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff; cursor:pointer; transition:.15s ease; }
+    .place { padding:14px; border:1px solid rgba(255,255,255,.68); border-radius:14px; background:rgba(255,255,255,.7); box-shadow:0 10px 22px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.82); backdrop-filter:blur(14px); cursor:pointer; transition:.15s ease; }
     .place:hover, .place.active { border-color:#9bd7ca; background:var(--soft); transform:translateY(-1px); }
     .place h2 { margin:0 0 5px; font-size:15px; }
     .place p { margin:0; color:var(--muted); font-size:13px; line-height:1.4; }
@@ -72,6 +78,8 @@
   <main class="app">
     <aside>
       <input id="search" class="search" type="search" placeholder="Поиск по названию и примечанию…" />
+      <div id="searchSuggestions" class="search-suggestions"></div>
+      <button id="findHotel" class="find-hotel" type="button">Find Hotel</button>
       <h2 class="filters-title">Filters</h2>
       <div id="filters" class="filters"></div>
       <div class="location-toggles">
@@ -89,7 +97,7 @@
       <div class="status">Данные обновляются при каждом открытии страницы.</div>
     </aside>
     <div id="map"></div>
-    <div class="legend"><span><i class="legend-icon legend-red"></i><b>Project</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-lime"></i><b>Active</b></span></div>
+    <div class="legend"><b>Projects:</b><span><i class="legend-icon legend-red"></i><b>Completed</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-lime"></i><b>Active</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span></div>
   </main>
 
   <script>
@@ -102,7 +110,7 @@
     const fallbackLocations = [
       { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
     ];
-    let map, infoWindow, markers = [], locations = [], routeSelection = new Set();
+    let map, infoWindow, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
 
     function parseCsv(text) {
       const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
@@ -177,7 +185,10 @@
     function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
     function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
-    document.querySelector('#search').addEventListener('input', e => renderList(e.target.value));
+    function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
+    document.querySelector('#search').addEventListener('input', e => { renderSearchSuggestions(e.target.value); renderList(e.target.value); });
+    document.querySelector('#findHotel').addEventListener('click', async () => { const query = document.querySelector('#search').value.trim().toLowerCase(); const location = locations.find(item => item.name.toLowerCase() === query) || locations.find(item => item.name.toLowerCase().includes(query)); if (!location) { document.querySelector('#status').textContent = 'Сначала выберите локацию в поиске'; return; } hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } });
+    document.querySelector('#searchSuggestions').addEventListener('click', event => { const suggestion = event.target.closest('[data-suggestion]'); if (!suggestion) return; const search = document.querySelector('#search'); search.value = suggestion.dataset.suggestion; document.querySelector('#searchSuggestions').classList.remove('visible'); renderList(search.value); });
     window.gm_authFailure = () => { document.querySelector('#status').textContent = 'Google отклонил API key: включите Maps JavaScript API и проверьте ограничения ключа.'; };
     function loadMapsScript() {
       if (CONFIG.googleMapsApiKey.includes('PASTE_')) { document.querySelector('#status').textContent = 'Добавьте API-ключ'; return; }
