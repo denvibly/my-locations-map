@@ -52,7 +52,8 @@
     .route h3 { margin:0 0 9px; font-size:14px; }
     .route input { width:100%; margin-bottom:7px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
     .route button { width:100%; padding:10px; border:0; border-radius:9px; background:var(--accent); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
-    .route button.secondary { margin-top:7px; background:#eaf2f0; color:var(--accent); }
+    .route-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin-top:7px; }
+    .route-actions .secondary { background:#eaf2f0; color:var(--accent); }
     .route-result { margin-top:9px; color:var(--muted); font-size:12px; line-height:1.4; }
     .add-route { width:100%; margin:2px 0 8px; padding:8px; border:1px dashed #9bcfc3; border-radius:9px; background:#f0faf7; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
     .route input { cursor:grab; }
@@ -89,7 +90,7 @@
       <div class="route">
         <h3>Маршрут</h3>
         <div id="routePoints"></div>
-        <button id="openRoute" class="secondary">Открыть в Google Maps</button>
+        <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute">Построить маршрут</button></div>
         <div id="routeResult" class="route-result">Выберите точки по порядку посещения.</div>
       </div>
       <div class="summary"><span id="status">Загрузка локаций…</span><span id="count" class="badge">0</span></div>
@@ -110,7 +111,7 @@
     const fallbackLocations = [
       { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
     ];
-    let map, infoWindow, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
+    let map, infoWindow, directionsService, directionsRenderer, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
 
     function parseCsv(text) {
       const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
@@ -166,6 +167,7 @@
       routePoints.addEventListener('dragover', event => { if (event.target.matches('[data-route-point]')) event.preventDefault(); });
       routePoints.addEventListener('drop', event => { const target = event.target.closest('[data-route-point]'); if (!target) return; event.preventDefault(); const source = [...routePoints.querySelectorAll('[data-route-point]')].find(input => input.dataset.routePoint === event.dataTransfer.getData('text/plain')); if (!source || source === target) return; const sourceValue = source.value; source.value = target.value; target.value = sourceValue; });
       document.querySelector('#openRoute').addEventListener('click', openRouteInGoogleMaps);
+      document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
     }
     function renderList(query = '') {
       const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
@@ -182,8 +184,9 @@
     function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
     function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const active = location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations'); const completed = status.includes('completed'); const isWh = location.locationType.toUpperCase() === 'WH'; const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : active && !isWh ? '#9bdc28' : isWh ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
     function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
+    function buildRouteOnMap() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const point = index => ({ lat:locations[index].lat, lng:locations[index].lng }); directionsService.route({ origin:point(ids[0]), destination:point(ids.at(-1)), waypoints:ids.slice(1, -1).map(index => ({ location:point(index), stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); document.querySelector('#routeResult').textContent = 'Маршрут построен на карте.'; }).catch(error => { console.error(error); document.querySelector('#routeResult').textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
     function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
-    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
+    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
     document.querySelector('#search').addEventListener('input', e => { renderSearchSuggestions(e.target.value); renderList(e.target.value); });
