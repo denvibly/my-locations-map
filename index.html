@@ -1,208 +1,2276 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
-  <title>Мои локации</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="theme-color" content="#0f766e">
+  <title>??? ???????</title>
+
+  <link rel="preconnect" href="https://maps.googleapis.com">
+  <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://docs.google.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
   <style>
-    :root { --ink:#10212b; --muted:#6c7c84; --line:#e4ecef; --accent:#0f766e; --soft:#eef8f5; }
-    * { box-sizing:border-box; }
-    body { margin:0; color:var(--ink); font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:linear-gradient(135deg,#eef8f5,#f8fbff 55%,#eef2ff); }
-    .app { display:grid; grid-template-columns:360px 1fr; height:100vh; }
-    aside { padding:28px 22px; background:rgba(255,255,255,.78); border-right:1px solid rgba(255,255,255,.55); box-shadow:12px 0 28px rgba(15,23,42,.12), 0 1px 3px rgba(15,23,42,.08); backdrop-filter:blur(16px); overflow:auto; }
-    .eyebrow { color:var(--accent); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    h1 { margin:8px 0 6px; font-size:30px; line-height:1.05; letter-spacing:-.04em; }
-    .intro { margin:0 0 24px; color:var(--muted); font-size:14px; line-height:1.5; }
-    .search { width:100%; padding:13px 14px; border:1px solid rgba(255,255,255,.65); border-radius:12px; outline:none; font:inherit; background:rgba(255,255,255,.64); box-shadow:0 8px 18px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter:blur(12px); }
-    .search:focus { border-color:var(--accent); box-shadow:0 0 0 3px #d8f0eb; }
-    .find-hotel { width:108px; height:38px; margin:8px 0 12px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
-    .find-hotel:hover { background:#0b5f59; }
-    .search-suggestions { display:none; position:relative; z-index:30; margin:-6px 0 8px; padding:5px; border:1px solid #b8d8d0; border-radius:10px; background:#fff; box-shadow:0 8px 20px #153b3822; }
-    .search-suggestions.visible { display:block; }
-    .search-suggestion { padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; }
-    .search-suggestion:hover { background:var(--soft); color:var(--accent); }
-    .filters { display:grid; gap:8px; margin-top:10px; }
-    .filter-menu { position:relative; }
-    .filter-button { width:100%; min-height:42px; padding:9px 12px; border:1px solid rgba(255,255,255,.65); border-radius:10px; background:rgba(255,255,255,.62); color:var(--ink); font:inherit; text-align:left; cursor:pointer; box-shadow:0 6px 14px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter:blur(12px); }
-    .filter-button.selected { border-color:#0f766e; background:#e5f6f1; color:#0f766e; font-weight:700; }
-    .filter-panel { display:none; position:absolute; z-index:10; top:46px; left:0; right:0; max-height:220px; overflow:auto; padding:6px; border:1px solid rgba(255,255,255,.62); border-radius:10px; background:rgba(255,255,255,.82); box-shadow:0 18px 38px rgba(15,23,42,.18), 0 4px 10px rgba(15,23,42,.08); backdrop-filter:blur(16px); }
-    .filter-menu.open .filter-panel { display:block; }
-    .filter-option { display:flex; gap:8px; align-items:center; padding:8px; border-radius:7px; color:var(--ink); font-size:13px; cursor:pointer; }
-    .filter-option:hover { background:var(--soft); }
-    .filter-search { width:100%; margin-bottom:5px; padding:8px 9px; border:1px solid var(--line); border-radius:7px; font:inherit; }
-    .filter-option input { accent-color:var(--accent); }
-    .filter-tags { display:flex; flex-wrap:wrap; gap:4px; }
-    .filter-tag { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:99px; background:#c8ebe3; font-size:12px; }
-    .filter-tag button { border:0; padding:0; background:transparent; color:#0f766e; font-size:15px; line-height:1; cursor:pointer; }
-    .location-toggles { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
-    .location-toggle { display:flex; gap:9px; align-items:center; padding:8px 10px; border-radius:9px; background:#f7faf9; font-size:13px; cursor:pointer; }
-    .location-toggle input { width:17px; height:17px; accent-color:var(--accent); }
-    .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
-    .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
-    .legend span { white-space:nowrap; }
-    .legend b { color:var(--ink); }
-    .legend-icon { display:inline-block; width:12px; height:12px; margin-right:4px; border:2px solid #fff; border-radius:50% 50% 50% 0; box-shadow:0 0 0 1px #84949a; transform:rotate(-45deg); vertical-align:-2px; }
-    .legend-red { background:#ef3f35; }
-    .legend-blue { background:#2563eb; }
-    .legend-yellow { background:#f2b01e; }
-    .legend-black { background:#111827; }
-    .legend-lime { background:#9bdc28; }
-    .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
-    .route h3 { margin:0 0 9px; font-size:14px; }
-    .route input { width:100%; margin-bottom:7px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
-    .route button { width:100%; padding:10px; border:0; border-radius:9px; background:var(--accent); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
-    .route-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin-top:7px; }
-    .route-actions .secondary { background:#eaf2f0; color:var(--accent); }
-    .route-result { margin-top:9px; color:var(--muted); font-size:12px; line-height:1.4; }
-    .add-route { width:100%; margin:2px 0 8px; padding:8px; border:1px dashed #9bcfc3; border-radius:9px; background:#f0faf7; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
-    .route input { cursor:grab; }
-    .route input:active { cursor:grabbing; }
-    .route-point-row { display:flex; gap:6px; align-items:center; }
-    .route-point-row input { flex:1; }
-    .route .remove-route-point, .route .clear-route-point { flex:0 0 36px; width:36px; height:36px; margin-bottom:7px; padding:0; border:0; border-radius:9px; background:#f1f4f4; color:#6c7c84; font-size:22px; cursor:pointer; }
-    .remove-route-point:hover { background:#fde8e7; color:#b42318; }
-    .summary { display:flex; justify-content:space-between; align-items:center; margin:20px 0 10px; font-size:13px; color:var(--muted); }
-    .badge { padding:5px 9px; border-radius:99px; background:var(--soft); color:var(--accent); font-weight:700; }
-    .places { display:grid; gap:10px; }
-    .place { padding:14px; border:1px solid rgba(255,255,255,.68); border-radius:14px; background:rgba(255,255,255,.7); box-shadow:0 10px 22px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.82); backdrop-filter:blur(14px); cursor:pointer; transition:.15s ease; }
-    .place:hover, .place.active { border-color:#9bd7ca; background:var(--soft); transform:translateY(-1px); }
-    .place h2 { margin:0 0 5px; font-size:15px; }
-    .place p { margin:0; color:var(--muted); font-size:13px; line-height:1.4; }
-    .empty { padding:18px 4px; color:var(--muted); font-size:14px; }
-    #map { min-height:100%; }
-    .status { margin-top:18px; color:var(--muted); font-size:12px; }
-    @media (max-width: 760px) { .app { grid-template-columns:1fr; grid-template-rows:44vh 56vh; } aside { order:2; border-right:0; border-top:1px solid var(--line); padding:20px; } #map { order:1; min-height:44vh; } .legend { left:0; gap:8px; overflow:auto; justify-content:flex-start; font-size:10px; } }
+    :root {
+      --ink: #10212b;
+      --muted: #6c7c84;
+      --line: #dce7ea;
+      --accent: #0f766e;
+      --accent-dark: #0b5f59;
+      --soft: #eef8f5;
+      --danger: #b42318;
+      --panel: rgba(255, 255, 255, 0.94);
+      --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #eef8f5, #f8fbff 55%, #eef2ff);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid #8bd1c2;
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    aside {
+      position: relative;
+      z-index: 5;
+      padding: 22px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: rgba(255, 255, 255, 0.88);
+      border-right: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 10px 0 26px rgba(15, 23, 42, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search {
+      width: 100%;
+      padding: 13px 14px;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      outline: none;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    .search:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px #d8f0eb;
+    }
+
+    .suggestions {
+      display: none;
+      position: absolute;
+      z-index: 50;
+      top: calc(100% + 5px);
+      left: 0;
+      right: 0;
+      max-height: 280px;
+      overflow: auto;
+      padding: 5px;
+      background: #fff;
+      border: 1px solid #b8d8d0;
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(21, 59, 56, 0.18);
+    }
+
+    .suggestions.visible {
+      display: block;
+    }
+
+    .suggestion {
+      display: block;
+      width: 100%;
+      padding: 9px 10px;
+      color: var(--ink);
+      text-align: left;
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .suggestion:hover,
+    .suggestion.active {
+      color: var(--accent);
+      background: var(--soft);
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0 14px;
+    }
+
+    .primary-button,
+    .secondary-button,
+    .add-route,
+    .show-more {
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    .primary-button {
+      min-height: 38px;
+      padding: 9px 13px;
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .primary-button:hover {
+      background: var(--accent-dark);
+    }
+
+    .primary-button:disabled {
+      cursor: wait;
+      opacity: 0.62;
+    }
+
+    .filters-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .filters {
+      display: grid;
+      gap: 8px;
+      min-height: 292px;
+    }
+
+    .filter-skeleton {
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #edf3f4 25%, #f7fafa 45%, #edf3f4 65%);
+      background-size: 200% 100%;
+      animation: shimmer 1.25s linear infinite;
+    }
+
+    @keyframes shimmer {
+      to {
+        background-position: -200% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .filter-skeleton {
+        animation: none;
+      }
+    }
+
+    .filter-menu {
+      position: relative;
+    }
+
+    .filter-button {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 12px;
+      color: var(--ink);
+      text-align: left;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+    }
+
+    .filter-button.selected {
+      color: var(--accent);
+      font-weight: 750;
+      background: #e5f6f1;
+      border-color: #7fc8b8;
+    }
+
+    .filter-button::after {
+      content: "?";
+      float: right;
+      color: var(--muted);
+    }
+
+    .filter-menu.open .filter-button::after {
+      content: "?";
+    }
+
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 3px 7px;
+      color: var(--accent-dark);
+      background: #ccece5;
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .filter-tag span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .filter-tag b {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .filter-panel {
+      display: none;
+      position: absolute;
+      z-index: 40;
+      top: calc(100% + 5px);
+      left: 0;
+      right: 0;
+      max-height: 250px;
+      overflow: auto;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid #cfe0e4;
+      border-radius: 10px;
+      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+    }
+
+    .filter-menu.open .filter-panel {
+      display: block;
+    }
+
+    .filter-search {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      width: 100%;
+      margin-bottom: 5px;
+      padding: 8px 9px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .filter-option {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .filter-option:hover {
+      background: var(--soft);
+    }
+
+    .filter-option input,
+    .location-toggle input {
+      accent-color: var(--accent);
+    }
+
+    .location-toggles {
+      display: grid;
+      gap: 8px;
+      margin-top: 11px;
+      padding-top: 11px;
+      border-top: 1px solid var(--line);
+    }
+
+    .location-toggle {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      padding: 8px 10px;
+      background: #f7faf9;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .location-toggle input {
+      width: 17px;
+      height: 17px;
+    }
+
+    .route {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .route h3 {
+      margin: 0 0 9px;
+      font-size: 14px;
+    }
+
+    .route-point-row {
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    .route-input-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .route-point {
+      width: 100%;
+      margin-bottom: 7px;
+      padding: 9px 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      cursor: grab;
+    }
+
+    .route-point:active {
+      cursor: grabbing;
+    }
+
+    .route-point.dragging {
+      opacity: 0.55;
+    }
+
+    .route-suggestions {
+      display: none;
+      position: absolute;
+      z-index: 45;
+      top: 39px;
+      left: 0;
+      right: 0;
+      max-height: 220px;
+      overflow: auto;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #b8d8d0;
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+    }
+
+    .route-suggestions.visible {
+      display: block;
+    }
+
+    .route-suggestion {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      color: var(--ink);
+      text-align: left;
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .route-suggestion:hover {
+      color: var(--accent);
+      background: var(--soft);
+    }
+
+    .route-remove {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      color: var(--muted);
+      background: #f1f4f4;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .route-remove:hover {
+      color: var(--danger);
+      background: #fde8e7;
+    }
+
+    .add-route {
+      width: 100%;
+      margin: 2px 0 8px;
+      padding: 8px;
+      color: var(--accent);
+      background: #f0faf7;
+      border: 1px dashed #9bcfc3;
+    }
+
+    .route-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 7px;
+    }
+
+    .route-actions button {
+      min-width: 0;
+    }
+
+    .secondary-button {
+      min-height: 38px;
+      padding: 8px;
+      color: var(--accent);
+      background: #eaf2f0;
+    }
+
+    .route-result {
+      min-height: 34px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin: 20px 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 5px 9px;
+      color: var(--accent);
+      background: var(--soft);
+      border-radius: 999px;
+      font-weight: 750;
+    }
+
+    .places {
+      display: grid;
+      gap: 9px;
+    }
+
+    .place {
+      padding: 13px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+      cursor: pointer;
+      content-visibility: auto;
+      contain-intrinsic-size: 112px;
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .place:hover,
+    .place.active {
+      background: var(--soft);
+      border-color: #9bd7ca;
+      transform: translateY(-1px);
+    }
+
+    .place h2 {
+      margin: 0 0 5px;
+      font-size: 15px;
+    }
+
+    .place p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .place a {
+      color: var(--accent);
+    }
+
+    .empty {
+      padding: 18px 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .show-more {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      color: var(--accent);
+      background: #eaf5f2;
+    }
+
+    .show-more.visible {
+      display: block;
+    }
+
+    .data-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .map-shell {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: #e8eef0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-message {
+      position: absolute;
+      z-index: 3;
+      top: 16px;
+      left: 50%;
+      max-width: min(520px, calc(100% - 32px));
+      padding: 10px 14px;
+      color: var(--ink);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      transform: translateX(-50%);
+      font-size: 13px;
+    }
+
+    .map-message.hidden {
+      display: none;
+    }
+
+    .legend {
+      position: absolute;
+      z-index: 2;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      padding: 8px 14px;
+      overflow: auto;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.94);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -3px 12px rgba(21, 59, 56, 0.06);
+      font-size: 12px;
+      scrollbar-width: thin;
+    }
+
+    .legend span {
+      white-space: nowrap;
+    }
+
+    .legend b {
+      color: var(--ink);
+    }
+
+    .legend-icon {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 4px;
+      border: 2px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      box-shadow: 0 0 0 1px #84949a;
+      transform: rotate(-45deg);
+      vertical-align: -2px;
+    }
+
+    .legend-red { background: #ef3f35; }
+    .legend-blue { background: #2563eb; }
+    .legend-yellow { background: #f2b01e; }
+    .legend-black { background: #111827; }
+    .legend-lime { background: #9bdc28; }
+
+    .map-pin {
+      position: relative;
+      width: 23px;
+      height: 23px;
+      background: var(--pin-color, #ef3f35);
+      border: 2px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+      transform: rotate(-45deg);
+      transform-origin: 50% 100%;
+      transition: transform 0.12s ease;
+    }
+
+    .map-pin::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 7px;
+      height: 7px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .map-pin.highlighted {
+      transform: rotate(-45deg) scale(1.35);
+    }
+
+    .map-pin.hotel {
+      --pin-color: #7c3aed;
+      border-radius: 50%;
+      transform: none;
+    }
+
+    .map-pin.hotel.highlighted {
+      transform: scale(1.25);
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 44dvh 56dvh;
+      }
+
+      aside {
+        order: 2;
+        padding: 18px;
+        border-top: 1px solid var(--line);
+        border-right: 0;
+        backdrop-filter: none;
+      }
+
+      .map-shell {
+        order: 1;
+      }
+
+      .legend {
+        justify-content: flex-start;
+        gap: 8px;
+        font-size: 10px;
+      }
+    }
   </style>
 </head>
+
 <body>
   <main class="app">
-    <aside>
-      <input id="search" class="search" type="search" placeholder="Поиск по названию и примечанию…" />
-      <div id="searchSuggestions" class="search-suggestions"></div>
-      <button id="findHotel" class="find-hotel" type="button">Find Hotel</button>
+    <aside aria-label="????? ? ??????? ???????">
+      <h1 class="sr-only">??? ???????</h1>
+
+      <div class="search-wrap">
+        <label class="sr-only" for="search">????? ?? ???????? ? ??????????</label>
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="????? ?? ???????? ? ??????????…"
+          autocomplete="off"
+          aria-autocomplete="list"
+          aria-controls="searchSuggestions"
+          aria-expanded="false">
+        <div id="searchSuggestions" class="suggestions" role="listbox"></div>
+      </div>
+
+      <div class="top-actions">
+        <button id="findHotel" class="primary-button" type="button">Find Hotel</button>
+      </div>
+
       <h2 class="filters-title">Filters</h2>
-      <div id="filters" class="filters"></div>
+      <div id="filters" class="filters" aria-busy="true">
+        <div class="filter-skeleton"></div>
+        <div class="filter-skeleton"></div>
+        <div class="filter-skeleton"></div>
+        <div class="filter-skeleton"></div>
+        <div class="filter-skeleton"></div>
+        <div class="filter-skeleton"></div>
+      </div>
+
       <div class="location-toggles">
-        <label class="location-toggle"><input id="activeLocationsToggle" type="checkbox"> <span>Active Locations</span></label>
-        <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox" checked> <span>Show all locations</span></label>
+        <label class="location-toggle">
+          <input id="activeLocationsToggle" type="checkbox">
+          <span>Active Locations</span>
+        </label>
+        <label class="location-toggle">
+          <input id="showAllLocationsToggle" type="checkbox" checked>
+          <span>Show all locations</span>
+        </label>
       </div>
-      <div class="route">
-        <h3>Маршрут</h3>
-        <div id="routePoints"></div>
-        <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute">Построить маршрут</button></div>
-        <div id="routeResult" class="route-result">Выберите точки по порядку посещения.</div>
+
+      <section class="route" aria-labelledby="routeTitle">
+        <h3 id="routeTitle">???????</h3>
+        <div id="routePoints">
+          <div class="route-point-row" data-route-row>
+            <div class="route-input-wrap">
+              <input class="route-point" type="text" draggable="true" data-route-point="1" placeholder="1. ????? ????????" autocomplete="off" aria-label="?????? ????? ????????">
+              <div class="route-suggestions" role="listbox"></div>
+            </div>
+            <button type="button" class="route-remove clear-route-point" aria-label="???????? ?????? ?????">×</button>
+          </div>
+          <div class="route-point-row" data-route-row>
+            <div class="route-input-wrap">
+              <input class="route-point" type="text" draggable="true" data-route-point="2" placeholder="2. ????? ????????" autocomplete="off" aria-label="?????? ????? ????????">
+              <div class="route-suggestions" role="listbox"></div>
+            </div>
+            <button type="button" class="route-remove clear-route-point" aria-label="???????? ?????? ?????">×</button>
+          </div>
+        </div>
+
+        <button type="button" class="add-route" id="addRoutePoint">+ ???</button>
+
+        <div class="route-actions">
+          <button id="openRoute" class="secondary-button" type="button">Google Maps</button>
+          <button id="buildRoute" class="primary-button" type="button">????????? ???????</button>
+        </div>
+        <div id="routeResult" class="route-result" aria-live="polite">???????? ????? ?? ??????? ?????????.</div>
+      </section>
+
+      <div class="summary">
+        <span id="status" aria-live="polite">???????? ???????…</span>
+        <span id="count" class="badge">0</span>
       </div>
-      <div class="summary"><span id="status">Загрузка локаций…</span><span id="count" class="badge">0</span></div>
-      <section id="places" class="places"></section>
-      <div class="status">Данные обновляются при каждом открытии страницы.</div>
+
+      <section id="places" class="places" aria-label="?????? ???????"></section>
+      <button id="showMore" class="show-more" type="button">???????? ???</button>
+      <div class="data-note">??????????? ?????? ???????????? ?????, ????? ??????? ??????????? ? ????.</div>
     </aside>
-    <div id="map"></div>
-    <div class="legend"><b>Projects:</b><span><i class="legend-icon legend-red"></i><b>Completed</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-black"></i><b>Not Started</b></span><span><i class="legend-icon legend-lime"></i><b>Active</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span></div>
+
+    <section class="map-shell" aria-label="????? ???????">
+      <div id="map"></div>
+      <div id="mapMessage" class="map-message">???????? ?????…</div>
+      <div class="legend" aria-label="??????? ?????">
+        <b>Projects:</b>
+        <span><i class="legend-icon legend-red"></i><b>Completed</b></span>
+        <span><i class="legend-icon legend-yellow"></i><b>Issue</b></span>
+        <span><i class="legend-icon legend-black"></i><b>Not Started</b></span>
+        <span><i class="legend-icon legend-lime"></i><b>Active</b></span>
+        <span><i class="legend-icon legend-blue"></i><b>WH</b></span>
+      </div>
+    </section>
   </main>
 
   <script>
-    // Замените два значения ниже на свои данные.
+    "use strict";
+
+    /*
+      1. ???????? ??? ??????? Google Maps API key ?????? placeholder ????.
+      2. ??? production ?????????? ???????? DEMO_MAP_ID ?? ??????????? Map ID.
+      3. ?????????? API key ?? HTTP referrer:
+         https://denvibly.github.io/my-locations-map/*
+    */
     const CONFIG = {
-      googleMapsApiKey: 'AIzaSyCg5M_iG5gLdOgNH9baLh707ihpYPpjTOQ',
-      sheetCsvUrl: 'https://docs.google.com/spreadsheets/d/1lVcZV4bHwlVEJVNOXTv2WStc6QXfCPocy71v8YSM9C0/export?format=csv&gid=1292317977'
+      googleMapsApiKey: "AIzaSyCg5M_iG5gLdOgNH9baLh707ihpYPpjTOQ",
+      googleMapId: "d4a533b759a614c142d9e966",
+      sheetCsvUrl: "https://docs.google.com/spreadsheets/d/1lVcZV4bHwlVEJVNOXTv2WStc6QXfCPocy71v8YSM9C0/export?format=csv&gid=1292317977",
+      markerClustererUrl: "https://unpkg.com/@googlemaps/markerclusterer@2.6.2/dist/index.min.js",
+      cacheKey: "my-locations-map-cache-v2",
+      cacheMaxAgeMs: 12 * 60 * 60 * 1000,
+      pageSize: 40,
+      searchDelayMs: 160
     };
 
-    const fallbackLocations = [
-      { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
+    const FALLBACK_LOCATIONS = [
+      {
+        name: "?????? ???????",
+        lat: 55.751244,
+        lng: 37.618423,
+        note: "????????? ?????? ? Google Sheets",
+        address: "??????",
+        mapsLink: "https://www.google.com/maps/search/?api=1&query=55.751244,37.618423",
+        hasAddress: true,
+        sheetRow: 2,
+        status: "",
+        cxStatus: "",
+        active: "",
+        locationType: "",
+        crewLead: "",
+        marketState: "",
+        project: "",
+        start: ""
+      }
     ];
-    let map, infoWindow, directionsService, directionsRenderer, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
+
+    const FILTER_FIELDS = [
+      { key: "status", label: "Status" },
+      { key: "locationType", label: "Location Type" },
+      { key: "crewLead", label: "Crew Lead" },
+      { key: "marketState", label: "Market/Carrier States" },
+      { key: "project", label: "Project #" },
+      { key: "start", label: "Start" }
+    ];
+
+    const elements = {
+      search: document.querySelector("#search"),
+      searchSuggestions: document.querySelector("#searchSuggestions"),
+      findHotel: document.querySelector("#findHotel"),
+      filters: document.querySelector("#filters"),
+      activeToggle: document.querySelector("#activeLocationsToggle"),
+      showAllToggle: document.querySelector("#showAllLocationsToggle"),
+      routePoints: document.querySelector("#routePoints"),
+      addRoutePoint: document.querySelector("#addRoutePoint"),
+      openRoute: document.querySelector("#openRoute"),
+      buildRoute: document.querySelector("#buildRoute"),
+      routeResult: document.querySelector("#routeResult"),
+      status: document.querySelector("#status"),
+      count: document.querySelector("#count"),
+      places: document.querySelector("#places"),
+      showMore: document.querySelector("#showMore"),
+      mapMessage: document.querySelector("#mapMessage")
+    };
+
+    let map = null;
+    let infoWindow = null;
+    let directionsService = null;
+    let directionsRenderer = null;
+    let locations = [];
+    let locationsFingerprint = "";
+    let filteredIndexes = [];
+    let visibleLimit = CONFIG.pageSize;
+    let routeSelection = new Set();
+    let selectedFilters = Object.fromEntries(FILTER_FIELDS.map(function (field) {
+      return [field.key, new Set()];
+    }));
+    let filterOptions = Object.fromEntries(FILTER_FIELDS.map(function (field) {
+      return [field.key, []];
+    }));
+    let markers = [];
+    let hotelMarkers = [];
+    let markerCluster = null;
+    let markerBuildToken = 0;
+    let markerClustererPromise = null;
+    let advancedMarkerClass = null;
+    let usingAdvancedMarkers = false;
+    let highlightedMarkerIndex = -1;
+    let currentVisibleMarkerIndexes = new Set();
+    let activeSearchSuggestion = -1;
+
+    function debounce(fn, delay) {
+      let timer = null;
+      return function () {
+        const args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          fn.apply(null, args);
+        }, delay);
+      };
+    }
+
+    function nextFrame() {
+      return new Promise(function (resolve) {
+        requestAnimationFrame(resolve);
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, function (character) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#039;"
+        }[character];
+      });
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/?/g, "?")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function normalizeHeader(header) {
+      return normalizeText(header).replace(/[^a-z?-?0-9]/g, "");
+    }
+
+    function safeHttpUrl(value, fallback) {
+      try {
+        const url = new URL(String(value || ""), window.location.href);
+        if (url.protocol === "https:" || url.protocol === "http:") {
+          return url.href;
+        }
+      } catch (error) {
+        // Use fallback below.
+      }
+      return fallback;
+    }
+
+    function pluralizeLocations(count) {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod10 === 1 && mod100 !== 11) return "???????";
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "???????";
+      return "???????";
+    }
 
     function parseCsv(text) {
-      const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
-      while ((match = re.exec(text))) { let value = match[1]; if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1).replace(/""/g, '"'); row.push(value.trim()); if (match[2] === '\n') { rows.push(row); row = []; } if (!match[2]) break; }
-      if (row.length && row.some(Boolean)) rows.push(row); return rows;
+      const cleaned = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const rows = [];
+      const expression = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g;
+      let row = [];
+      let match;
+
+      while ((match = expression.exec(cleaned))) {
+        let value = match[1];
+        if (value.startsWith("\"") && value.endsWith("\"")) {
+          value = value.slice(1, -1).replace(/""/g, "\"");
+        }
+        row.push(value.trim());
+
+        if (match[2] === "\n") {
+          rows.push(row);
+          row = [];
+        }
+
+        if (!match[2]) break;
+      }
+
+      if (row.length && row.some(Boolean)) rows.push(row);
+      return rows;
     }
 
-    function normalizeHeader(header) { return String(header).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]/g, ''); }
-    function fromRows(rows) {
+    function locationsFromRows(rows) {
       if (rows.length < 2) return [];
+
       const headers = rows[0].map(normalizeHeader);
-      const exact = name => headers.findIndex(header => header === name);
-      const find = (names) => headers.findIndex(h => names.some(n => h.includes(n)));
-      const nameI = find(['name','название','локация','место','link']), projectI = find(['project']), latI = find(['lat','широта']), lngI = find(['lng','lon','долгота']), noteI = find(['note','description','примечание','описание']), addressI = find(['address','адрес']), statusI = headers.length > 20 ? 20 : (exact('status') >= 0 ? exact('status') : find(['status','статус'])), cxStatusI = exact('cxstatus') >= 0 ? exact('cxstatus') : find(['cxstatus']), activeI = headers.length > 23 ? 23 : find(['active']), mapsI = find(['googlemaps','maps']), startI = headers.length > 25 ? 25 : (exact('start') >= 0 ? exact('start') : find(['start']));
-      return rows.slice(1).map((row, rowIndex) => {
-        const sheetRow = rowIndex + 2;
-        const name = row[nameI >= 0 ? nameI : 0] || row[projectI >= 0 ? projectI : 0] || 'Без названия';
-        const details = [projectI >= 0 && row[projectI], addressI >= 0 && row[addressI], statusI >= 0 && row[statusI], activeI >= 0 && row[activeI], noteI >= 0 && row[noteI]].filter(Boolean);
-        const value = index => index >= 0 ? String(row[index] || '').trim() : '';
-        const address = value(addressI), mapsLink = value(mapsI) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row[latI]},${row[lngI]}`)}`;
-        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), project:value(projectI), start:value(startI) };
-      }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng) && x.hasAddress);
+      const exact = function (name) {
+        return headers.findIndex(function (header) {
+          return header === name;
+        });
+      };
+      const find = function (names) {
+        return headers.findIndex(function (header) {
+          return names.some(function (name) {
+            return header.includes(name);
+          });
+        });
+      };
+      const preferExact = function (exactName, includeNames, fallbackIndex) {
+        const exactIndex = exact(exactName);
+        if (exactIndex >= 0) return exactIndex;
+        const foundIndex = find(includeNames);
+        if (foundIndex >= 0) return foundIndex;
+        return headers.length > fallbackIndex ? fallbackIndex : -1;
+      };
+
+      const indexes = {
+        name: find(["name", "????????", "???????", "?????", "link"]),
+        project: find(["project"]),
+        lat: find(["lat", "??????"]),
+        lng: find(["lng", "lon", "???????"]),
+        note: find(["note", "description", "??????????", "????????"]),
+        address: find(["address", "?????"]),
+        status: preferExact("status", ["status", "??????"], 20),
+        cxStatus: preferExact("cxstatus", ["cxstatus"], 21),
+        active: preferExact("active", ["active"], 23),
+        maps: find(["googlemaps", "maps"]),
+        start: preferExact("start", ["start"], 25),
+        locationType: find(["locationtype", "??????????"]),
+        crewLead: find(["crewlead", "???????????????????"]),
+        marketState: find(["marketcarrierstates", "market", "carrierstates", "????"])
+      };
+
+      const valueAt = function (row, index) {
+        return index >= 0 ? String(row[index] || "").trim() : "";
+      };
+
+      return rows.slice(1).map(function (row, rowIndex) {
+        const name = valueAt(row, indexes.name) || valueAt(row, indexes.project) || "??? ????????";
+        const lat = Number(valueAt(row, indexes.lat).replace(",", "."));
+        const lng = Number(valueAt(row, indexes.lng).replace(",", "."));
+        const address = valueAt(row, indexes.address);
+        const fallbackMapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(lat + "," + lng);
+        const mapsLink = safeHttpUrl(valueAt(row, indexes.maps), fallbackMapUrl);
+        const details = [
+          valueAt(row, indexes.project),
+          address,
+          valueAt(row, indexes.status),
+          valueAt(row, indexes.active),
+          valueAt(row, indexes.note)
+        ].filter(Boolean);
+
+        return {
+          name: name,
+          lat: lat,
+          lng: lng,
+          note: details.join(" • "),
+          address: address,
+          mapsLink: mapsLink,
+          hasAddress: Boolean(address),
+          sheetRow: rowIndex + 2,
+          status: valueAt(row, indexes.status),
+          cxStatus: valueAt(row, indexes.cxStatus),
+          active: valueAt(row, indexes.active),
+          locationType: valueAt(row, indexes.locationType),
+          crewLead: valueAt(row, indexes.crewLead),
+          marketState: valueAt(row, indexes.marketState),
+          project: valueAt(row, indexes.project),
+          start: valueAt(row, indexes.start)
+        };
+      }).filter(function (location) {
+        return Number.isFinite(location.lat) &&
+          Number.isFinite(location.lng) &&
+          location.hasAddress;
+      });
     }
 
-    async function loadLocations() {
-      if (CONFIG.sheetCsvUrl.includes('PASTE_SHEET_ID')) return fallbackLocations;
-      const response = await fetch(CONFIG.sheetCsvUrl); if (!response.ok) throw new Error('Не удалось загрузить таблицу');
-      return fromRows(parseCsv(await response.text()));
+    function readCachedLocations() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CONFIG.cacheKey) || "null");
+        if (!cached || !Array.isArray(cached.data) || !cached.data.length) return null;
+        if (Date.now() - Number(cached.savedAt || 0) > CONFIG.cacheMaxAgeMs) return null;
+        return cached.data;
+      } catch (error) {
+        return null;
+      }
     }
 
-    const filterFields = [{key:'status', label:'Status'}, {key:'locationType', label:'Location Type'}, {key:'crewLead', label:'Crew Lead'}, {key:'marketState', label:'Market/Carrier States'}, {key:'project', label:'Project #'}, {key:'start', label:'Start'}];
+    function writeCachedLocations(data) {
+      try {
+        localStorage.setItem(CONFIG.cacheKey, JSON.stringify({
+          savedAt: Date.now(),
+          data: data
+        }));
+      } catch (error) {
+        // Cache is an optional acceleration only.
+      }
+    }
+
+    async function fetchFreshLocations() {
+      const response = await fetch(CONFIG.sheetCsvUrl, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("?? ??????? ????????? ???????: HTTP " + response.status);
+      }
+      const parsed = locationsFromRows(parseCsv(await response.text()));
+      if (!parsed.length) {
+        throw new Error("? ??????? ?? ??????? ?????????? ???????");
+      }
+      return parsed;
+    }
+
+    function fingerprintLocations(data) {
+      return JSON.stringify(data.map(function (location) {
+        return [
+          location.name,
+          location.lat,
+          location.lng,
+          location.note,
+          location.address,
+          location.mapsLink,
+          location.status,
+          location.cxStatus,
+          location.active,
+          location.locationType,
+          location.crewLead,
+          location.marketState,
+          location.project,
+          location.start
+        ];
+      }));
+    }
+
+    function prepareLocations(data) {
+      return data.map(function (location, index) {
+        return Object.assign({}, location, {
+          index: index,
+          normalizedName: normalizeText(location.name),
+          searchText: normalizeText([
+            location.name,
+            location.note,
+            location.address,
+            location.marketState,
+            location.crewLead,
+            location.project
+          ].join(" "))
+        });
+      });
+    }
+
+    function applyLocations(data, sourceLabel) {
+      const nextFingerprint = fingerprintLocations(data);
+      if (nextFingerprint === locationsFingerprint) {
+        elements.status.textContent = locations.length + " " + pluralizeLocations(locations.length);
+        return;
+      }
+
+      locationsFingerprint = nextFingerprint;
+      locations = prepareLocations(data);
+      visibleLimit = CONFIG.pageSize;
+      rebuildFilterData();
+      setupFilters();
+      updateRouteSelectionsAfterDataChange();
+      applyFiltersAndRender();
+      rebuildMarkers();
+
+      elements.status.textContent = locations.length + " " + pluralizeLocations(locations.length) +
+        (sourceLabel === "cache" ? " · ??????????? ??????" : "");
+    }
+
+    async function loadLocationData() {
+      const cached = readCachedLocations();
+      if (cached) {
+        applyLocations(cached, "cache");
+      }
+
+      try {
+        const fresh = await fetchFreshLocations();
+        writeCachedLocations(fresh);
+        applyLocations(fresh, "fresh");
+      } catch (error) {
+        console.error(error);
+        if (!locations.length) {
+          applyLocations(FALLBACK_LOCATIONS, "fallback");
+          elements.status.textContent = "??????? ?????????? — ??????? ??????";
+        } else {
+          elements.status.textContent = locations.length + " " + pluralizeLocations(locations.length) + " · ?????????? ??????????";
+        }
+      }
+    }
+
+    function rebuildFilterData() {
+      FILTER_FIELDS.forEach(function (field) {
+        const values = Array.from(new Set(locations.map(function (location) {
+          return location[field.key];
+        }).filter(Boolean))).sort(function (a, b) {
+          return a.localeCompare(b);
+        });
+
+        filterOptions[field.key] = values;
+        selectedFilters[field.key] = selectedFilters[field.key] || new Set();
+
+        Array.from(selectedFilters[field.key]).forEach(function (selected) {
+          if (!values.includes(selected)) selectedFilters[field.key].delete(selected);
+        });
+      });
+    }
+
     function setupFilters() {
-      document.querySelector('#filters').innerHTML = filterFields.map(field => `<div class="filter-menu" data-menu="${field.key}"><button type="button" class="filter-button" data-filter-button="${field.key}">${field.label}</button><div class="filter-panel"><input class="filter-search" data-filter-search="${field.key}" placeholder="Поиск ${field.label}…">${[...new Set(locations.map(x => x[field.key]).filter(Boolean))].sort((a,b) => a.localeCompare(b)).map(value => `<label class="filter-option"><input type="checkbox" data-filter-value="${field.key}" value="${escapeHtml(value)}"><span>${escapeHtml(value)}</span></label>`).join('')}</div></div>`).join('');
-      document.querySelectorAll('[data-filter-button]').forEach(button => button.addEventListener('click', () => { const menu = button.closest('.filter-menu'); document.querySelectorAll('.filter-menu.open').forEach(other => { if (other !== menu) other.classList.remove('open'); }); menu.classList.toggle('open'); }));
-      document.addEventListener('click', event => { if (!event.target.closest('.filter-menu')) document.querySelectorAll('.filter-menu.open').forEach(menu => menu.classList.remove('open')); });
-      document.querySelectorAll('[data-filter-value]').forEach(input => input.addEventListener('change', () => { const key = input.dataset.filterValue; const values = [...document.querySelectorAll(`[data-filter-value="${key}"]:checked`)].map(item => item.value); const button = document.querySelector(`[data-filter-button="${key}"]`); button.classList.toggle('selected', values.length > 0); button.innerHTML = values.length ? `<span class="filter-tags">${values.map(value => `<span class="filter-tag">${escapeHtml(value)}<button type="button" data-remove-filter="${escapeHtml(key)}" data-remove-value="${escapeHtml(value)}" aria-label="Убрать фильтр">×</button></span>`).join('')}</span>` : filterFields.find(field => field.key === key).label; document.querySelectorAll('[data-remove-filter]').forEach(remove => remove.addEventListener('click', event => { event.stopPropagation(); const checkbox = [...document.querySelectorAll(`[data-filter-value="${remove.dataset.removeFilter}"]`)].find(item => item.value === remove.dataset.removeValue); if (checkbox) { checkbox.checked = false; checkbox.dispatchEvent(new Event('change')); } })); renderList(document.querySelector('#search').value); }));
-      document.querySelectorAll('[data-filter-search]').forEach(input => input.addEventListener('input', () => { const query = input.value.toLowerCase(); const key = input.dataset.filterSearch; document.querySelectorAll(`[data-filter-value="${key}"]`).forEach(box => { box.closest('.filter-option').style.display = box.value.toLowerCase().includes(query) ? 'flex' : 'none'; }); }));
-      const routeInput = number => `<div class="route-point-row"><input type="text" draggable="true" data-route-point="${number}" list="routeLocations" placeholder="${number}. Точка маршрута" autocomplete="off"><button type="button" class="${number > 2 ? 'remove-route-point' : 'clear-route-point'}" aria-label="${number > 2 ? 'Удалить точку' : 'Очистить точку'}">×</button></div>`;
-      document.querySelector('#routePoints').innerHTML = routeInput(1) + routeInput(2) + '<datalist id="routeLocations"></datalist><button type="button" class="add-route" id="addRoutePoint">+ Ещё</button>';
-      const routeLocations = document.querySelector('#routeLocations');
-      locations.forEach(location => { const option = document.createElement('option'); option.value = location.name; routeLocations.appendChild(option); });
-      document.querySelector('#addRoutePoint').addEventListener('click', () => { const current = document.querySelectorAll('[data-route-point]').length; const row = document.createElement('div'); row.className = 'route-point-row'; row.innerHTML = `<input type="text" draggable="true" data-route-point="${current + 1}" list="routeLocations" placeholder="${current + 1}. Точка маршрута" autocomplete="off"><button type="button" class="remove-route-point" aria-label="Удалить точку">×</button>`; document.querySelector('#routePoints').insertBefore(row, document.querySelector('#addRoutePoint')); });
-      document.querySelector('#routePoints').addEventListener('click', event => { if (event.target.matches('.clear-route-point')) { const input = event.target.closest('.route-point-row').querySelector('[data-route-point]'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles:true })); return; } if (!event.target.matches('.remove-route-point')) return; event.target.closest('.route-point-row').remove(); [...document.querySelectorAll('[data-route-point]')].forEach((input, index) => { input.dataset.routePoint = index + 1; input.placeholder = `${index + 1}. Точка маршрута`; }); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0)); });
-      document.querySelector('#activeLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#showAllLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
-      document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#activeLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
-      const routePoints = document.querySelector('#routePoints');
-      const highlightRouteInput = input => { const index = locations.findIndex(location => location.name === input.value.trim()); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(routeInput => locations.findIndex(location => location.name === routeInput.value.trim())).filter(routeIndex => routeIndex >= 0)); markers.forEach((marker, markerIndex) => marker.setIcon(markerIcon(locations[markerIndex], markerIndex === index))); renderList(document.querySelector('#search').value); };
-      routePoints.addEventListener('input', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
-      routePoints.addEventListener('focusin', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
-      routePoints.addEventListener('click', event => { if (event.target.matches('[data-route-point]')) highlightRouteInput(event.target); });
-      routePoints.addEventListener('dragstart', event => { if (event.target.matches('[data-route-point]')) { event.dataTransfer.setData('text/plain', event.target.dataset.routePoint); event.target.classList.add('dragging'); } });
-      routePoints.addEventListener('dragend', event => event.target.classList.remove('dragging'));
-      routePoints.addEventListener('dragover', event => { if (event.target.matches('[data-route-point]')) event.preventDefault(); });
-      routePoints.addEventListener('drop', event => { const target = event.target.closest('[data-route-point]'); if (!target) return; event.preventDefault(); const source = [...routePoints.querySelectorAll('[data-route-point]')].find(input => input.dataset.routePoint === event.dataTransfer.getData('text/plain')); if (!source || source === target) return; const sourceValue = source.value; source.value = target.value; target.value = sourceValue; });
-      document.querySelector('#openRoute').addEventListener('click', openRouteInGoogleMaps);
-      document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
+      const fragment = document.createDocumentFragment();
+
+      FILTER_FIELDS.forEach(function (field) {
+        const menu = document.createElement("div");
+        menu.className = "filter-menu";
+        menu.dataset.menu = field.key;
+        menu.innerHTML =
+          '<button type="button" class="filter-button" data-filter-button="' + escapeHtml(field.key) + '" aria-expanded="false">' +
+            escapeHtml(field.label) +
+          '</button>' +
+          '<div class="filter-tags" data-filter-tags="' + escapeHtml(field.key) + '"></div>' +
+          '<div class="filter-panel" data-filter-panel="' + escapeHtml(field.key) + '" data-built="false">' +
+            '<input class="filter-search" data-filter-search="' + escapeHtml(field.key) + '" placeholder="????? ' + escapeHtml(field.label) + '…" aria-label="????? ' + escapeHtml(field.label) + '">' +
+            '<div class="filter-options" data-filter-options="' + escapeHtml(field.key) + '"></div>' +
+          '</div>';
+        fragment.appendChild(menu);
+      });
+
+      elements.filters.replaceChildren(fragment);
+      elements.filters.setAttribute("aria-busy", "false");
+      FILTER_FIELDS.forEach(function (field) {
+        updateFilterPresentation(field.key);
+      });
     }
-    function renderList(query = '') {
-      const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
-      const showAll = document.querySelector('#showAllLocationsToggle')?.checked ?? true;
-      const activeOnly = document.querySelector('#activeLocationsToggle')?.checked ?? false;
-      const displayLocations = showAll || activeOnly || routeSelection.size > 0;
-      const filtered = showAll || activeOnly ? locations.filter(x => `${x.name} ${x.note}`.toLowerCase().includes(query.toLowerCase()) && (!activeOnly || x.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations')) && filterFields.every(field => !selected[field.key].length || selected[field.key].includes(x[field.key]))) : [];
-      const visible = new Set([...filtered, ...(displayLocations ? [...routeSelection].map(index => locations[index]).filter(Boolean) : [])]);
-      markers.forEach((marker, index) => marker.setVisible(visible.has(locations[index])));
-      document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = `${locations.length} ${locations.length === 1 ? 'локация' : 'локаций'}`;
-      const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.marketState ? `<strong>Market/Carrier States:</strong> ${escapeHtml(x.marketState)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
-      list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
+
+    function buildFilterOptions(key) {
+      const panel = elements.filters.querySelector('[data-filter-panel="' + CSS.escape(key) + '"]');
+      if (!panel || panel.dataset.built === "true") return;
+
+      const container = panel.querySelector('[data-filter-options="' + CSS.escape(key) + '"]');
+      const fragment = document.createDocumentFragment();
+
+      filterOptions[key].forEach(function (value) {
+        const label = document.createElement("label");
+        label.className = "filter-option";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.filterValue = key;
+        input.value = value;
+        input.checked = selectedFilters[key].has(value);
+
+        const span = document.createElement("span");
+        span.textContent = value;
+
+        label.append(input, span);
+        fragment.appendChild(label);
+      });
+
+      container.appendChild(fragment);
+      panel.dataset.built = "true";
     }
-    function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
-    function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const active = location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations'); const completed = status.includes('completed'); const isWh = location.locationType.toUpperCase() === 'WH'; const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : active && !isWh ? '#9bdc28' : isWh ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.05 : 0.75, anchor:new google.maps.Point(0,0) }; }
-    function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
-    function buildRouteOnMap() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const point = index => ({ lat:locations[index].lat, lng:locations[index].lng }); directionsService.route({ origin:point(ids[0]), destination:point(ids.at(-1)), waypoints:ids.slice(1, -1).map(index => ({ location:point(index), stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); document.querySelector('#routeResult').textContent = 'Маршрут построен на карте.'; }).catch(error => { console.error(error); document.querySelector('#routeResult').textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
-    function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
-    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
-    window.initMap = initMap;
-    function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
-    document.querySelector('#search').addEventListener('input', e => { renderSearchSuggestions(e.target.value); renderList(e.target.value); });
-    document.querySelector('#findHotel').addEventListener('click', async () => { const query = document.querySelector('#search').value.trim().toLowerCase(); const location = locations.find(item => item.name.toLowerCase() === query) || locations.find(item => item.name.toLowerCase().includes(query)); if (!location) { document.querySelector('#status').textContent = 'Сначала выберите локацию в поиске'; return; } hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } });
-    document.querySelector('#searchSuggestions').addEventListener('click', event => { const suggestion = event.target.closest('[data-suggestion]'); if (!suggestion) return; const search = document.querySelector('#search'); search.value = suggestion.dataset.suggestion; document.querySelector('#searchSuggestions').classList.remove('visible'); renderList(search.value); });
-    window.gm_authFailure = () => { document.querySelector('#status').textContent = 'Google отклонил API key: включите Maps JavaScript API и проверьте ограничения ключа.'; };
-    function loadMapsScript() {
-      if (CONFIG.googleMapsApiKey.includes('PASTE_')) { document.querySelector('#status').textContent = 'Добавьте API-ключ'; return; }
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.googleMapsApiKey}&callback=initMap`;
-      script.async = true; script.defer = true;
-      script.onerror = () => { document.querySelector('#status').textContent = 'Google Maps API не загрузился. Проверьте ключ и разрешённые API.'; };
-      document.head.appendChild(script);
-      setTimeout(() => { if (!map) document.querySelector('#status').textContent = 'Карта не запустилась. Проверьте Maps JavaScript API, billing и ограничения API key.'; }, 8000);
+
+    function updateFilterPresentation(key) {
+      const field = FILTER_FIELDS.find(function (item) {
+        return item.key === key;
+      });
+      const button = elements.filters.querySelector('[data-filter-button="' + CSS.escape(key) + '"]');
+      const tags = elements.filters.querySelector('[data-filter-tags="' + CSS.escape(key) + '"]');
+      if (!field || !button || !tags) return;
+
+      const values = Array.from(selectedFilters[key]);
+      button.textContent = field.label + (values.length ? " (" + values.length + ")" : "");
+      button.classList.toggle("selected", values.length > 0);
+
+      const fragment = document.createDocumentFragment();
+      values.forEach(function (value) {
+        const tag = document.createElement("button");
+        tag.type = "button";
+        tag.className = "filter-tag";
+        tag.dataset.removeFilter = key;
+        tag.dataset.removeValue = value;
+        tag.setAttribute("aria-label", "?????? ?????? " + value);
+
+        const text = document.createElement("span");
+        text.textContent = value;
+        const close = document.createElement("b");
+        close.textContent = "×";
+        close.setAttribute("aria-hidden", "true");
+
+        tag.append(text, close);
+        fragment.appendChild(tag);
+      });
+      tags.replaceChildren(fragment);
     }
-    loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = 'Таблица недоступна — показан пример'; renderList(); loadMapsScript(); });
+
+    function closeFilterMenus(exceptMenu) {
+      elements.filters.querySelectorAll(".filter-menu.open").forEach(function (menu) {
+        if (menu !== exceptMenu) {
+          menu.classList.remove("open");
+          const button = menu.querySelector("[data-filter-button]");
+          if (button) button.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
+    elements.filters.addEventListener("click", function (event) {
+      const button = event.target.closest("[data-filter-button]");
+      if (button) {
+        const menu = button.closest(".filter-menu");
+        const willOpen = !menu.classList.contains("open");
+        closeFilterMenus(menu);
+        menu.classList.toggle("open", willOpen);
+        button.setAttribute("aria-expanded", String(willOpen));
+        if (willOpen) {
+          buildFilterOptions(button.dataset.filterButton);
+          const search = menu.querySelector("[data-filter-search]");
+          if (search) requestAnimationFrame(function () { search.focus(); });
+        }
+        return;
+      }
+
+      const remove = event.target.closest("[data-remove-filter]");
+      if (remove) {
+        event.stopPropagation();
+        const key = remove.dataset.removeFilter;
+        const value = remove.dataset.removeValue;
+        selectedFilters[key].delete(value);
+
+        const checkbox = Array.from(elements.filters.querySelectorAll('[data-filter-value="' + CSS.escape(key) + '"]')).find(function (input) {
+          return input.value === value;
+        });
+        if (checkbox) checkbox.checked = false;
+
+        updateFilterPresentation(key);
+        visibleLimit = CONFIG.pageSize;
+        applyFiltersAndRender();
+      }
+    });
+
+    elements.filters.addEventListener("change", function (event) {
+      const input = event.target.closest("[data-filter-value]");
+      if (!input) return;
+
+      const key = input.dataset.filterValue;
+      if (input.checked) selectedFilters[key].add(input.value);
+      else selectedFilters[key].delete(input.value);
+
+      updateFilterPresentation(key);
+      visibleLimit = CONFIG.pageSize;
+      applyFiltersAndRender();
+    });
+
+    elements.filters.addEventListener("input", function (event) {
+      const input = event.target.closest("[data-filter-search]");
+      if (!input) return;
+
+      const query = normalizeText(input.value);
+      const menu = input.closest(".filter-menu");
+      menu.querySelectorAll(".filter-option").forEach(function (option) {
+        const checkbox = option.querySelector("input");
+        option.hidden = !normalizeText(checkbox.value).includes(query);
+      });
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest(".filter-menu")) closeFilterMenus(null);
+      if (!event.target.closest(".search-wrap")) closeSearchSuggestions();
+      if (!event.target.closest("[data-route-row]")) closeRouteSuggestions();
+    });
+
+    function isActiveLocation(location) {
+      return normalizeText(location.active).includes("active locations");
+    }
+
+    function locationMatchesSelectedFilters(location) {
+      return FILTER_FIELDS.every(function (field) {
+        const selected = selectedFilters[field.key];
+        return !selected.size || selected.has(location[field.key]);
+      });
+    }
+
+    function calculateFilteredIndexes() {
+      const query = normalizeText(elements.search.value);
+      const showAll = elements.showAllToggle.checked;
+      const activeOnly = elements.activeToggle.checked;
+
+      if (!showAll && !activeOnly) return [];
+
+      const result = [];
+      locations.forEach(function (location, index) {
+        if (query && !location.searchText.includes(query)) return;
+        if (activeOnly && !isActiveLocation(location)) return;
+        if (!locationMatchesSelectedFilters(location)) return;
+        result.push(index);
+      });
+      return result;
+    }
+
+    function addDetailLine(container, label, value) {
+      if (!value) return;
+      const strong = document.createElement("strong");
+      strong.textContent = label + ":";
+      container.append(strong, document.createTextNode(" " + value), document.createElement("br"));
+    }
+
+    function createLocationCard(index) {
+      const location = locations[index];
+      const article = document.createElement("article");
+      article.className = "place";
+      article.dataset.index = String(index);
+      article.tabIndex = 0;
+      article.setAttribute("aria-label", "??????? " + location.name + " ?? ?????");
+
+      const title = document.createElement("h2");
+      title.textContent = location.name;
+
+      const details = document.createElement("p");
+      addDetailLine(details, "Address", location.address);
+      addDetailLine(details, "Market/Carrier States", location.marketState);
+      addDetailLine(details, "CX Status", location.cxStatus);
+      addDetailLine(details, "Status", location.status);
+      addDetailLine(details, "Crew Lead", location.crewLead);
+
+      const link = document.createElement("a");
+      link.href = location.mapsLink;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "??????? ? Google Maps";
+      details.appendChild(link);
+
+      article.append(title, details);
+      return article;
+    }
+
+    function renderLocationList() {
+      const indexesToRender = filteredIndexes.slice(0, visibleLimit);
+      const fragment = document.createDocumentFragment();
+
+      if (!indexesToRender.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "?????? ?? ???????.";
+        fragment.appendChild(empty);
+      } else {
+        indexesToRender.forEach(function (index) {
+          fragment.appendChild(createLocationCard(index));
+        });
+      }
+
+      elements.places.replaceChildren(fragment);
+      elements.count.textContent = String(filteredIndexes.length);
+      elements.showMore.classList.toggle("visible", visibleLimit < filteredIndexes.length);
+
+      if (visibleLimit < filteredIndexes.length) {
+        elements.showMore.textContent = "???????? ??? " + Math.min(CONFIG.pageSize, filteredIndexes.length - visibleLimit) +
+          " · ???????? " + indexesToRender.length + " ?? " + filteredIndexes.length;
+      }
+    }
+
+    function applyFiltersAndRender() {
+      filteredIndexes = calculateFilteredIndexes();
+      renderLocationList();
+      updateMarkerVisibility();
+    }
+
+    const scheduleSearchRender = debounce(function () {
+      visibleLimit = CONFIG.pageSize;
+      applyFiltersAndRender();
+    }, CONFIG.searchDelayMs);
+
+    function renderSearchSuggestions() {
+      const query = normalizeText(elements.search.value);
+      activeSearchSuggestion = -1;
+
+      if (!query) {
+        closeSearchSuggestions();
+        return;
+      }
+
+      const matches = [];
+      for (let index = 0; index < locations.length && matches.length < 8; index += 1) {
+        if (locations[index].searchText.includes(query)) matches.push(index);
+      }
+
+      const fragment = document.createDocumentFragment();
+      matches.forEach(function (index) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "suggestion";
+        button.dataset.suggestionIndex = String(index);
+        button.setAttribute("role", "option");
+        button.textContent = locations[index].name;
+        fragment.appendChild(button);
+      });
+
+      elements.searchSuggestions.replaceChildren(fragment);
+      elements.searchSuggestions.classList.toggle("visible", matches.length > 0);
+      elements.search.setAttribute("aria-expanded", String(matches.length > 0));
+    }
+
+    function closeSearchSuggestions() {
+      elements.searchSuggestions.classList.remove("visible");
+      elements.search.setAttribute("aria-expanded", "false");
+      activeSearchSuggestion = -1;
+    }
+
+    function selectSearchSuggestion(index) {
+      const location = locations[index];
+      if (!location) return;
+      elements.search.value = location.name;
+      closeSearchSuggestions();
+      visibleLimit = CONFIG.pageSize;
+      applyFiltersAndRender();
+      focusLocation(index);
+    }
+
+    elements.search.addEventListener("input", function () {
+      renderSearchSuggestions();
+      scheduleSearchRender();
+    });
+
+    elements.search.addEventListener("keydown", function (event) {
+      const suggestions = Array.from(elements.searchSuggestions.querySelectorAll("[data-suggestion-index]"));
+      if (!suggestions.length) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        activeSearchSuggestion = (activeSearchSuggestion + 1) % suggestions.length;
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        activeSearchSuggestion = (activeSearchSuggestion - 1 + suggestions.length) % suggestions.length;
+      } else if (event.key === "Enter" && activeSearchSuggestion >= 0) {
+        event.preventDefault();
+        selectSearchSuggestion(Number(suggestions[activeSearchSuggestion].dataset.suggestionIndex));
+        return;
+      } else if (event.key === "Escape") {
+        closeSearchSuggestions();
+        return;
+      } else {
+        return;
+      }
+
+      suggestions.forEach(function (suggestion, index) {
+        suggestion.classList.toggle("active", index === activeSearchSuggestion);
+      });
+    });
+
+    elements.searchSuggestions.addEventListener("click", function (event) {
+      const suggestion = event.target.closest("[data-suggestion-index]");
+      if (!suggestion) return;
+      selectSearchSuggestion(Number(suggestion.dataset.suggestionIndex));
+    });
+
+    elements.showMore.addEventListener("click", function () {
+      visibleLimit += CONFIG.pageSize;
+      renderLocationList();
+    });
+
+    elements.places.addEventListener("click", function (event) {
+      if (event.target.closest("a")) return;
+      const card = event.target.closest("[data-index]");
+      if (card) focusLocation(Number(card.dataset.index));
+    });
+
+    elements.places.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (event.target.closest("a")) return;
+      const card = event.target.closest("[data-index]");
+      if (!card) return;
+      event.preventDefault();
+      focusLocation(Number(card.dataset.index));
+    });
+
+    elements.activeToggle.addEventListener("change", function () {
+      if (elements.activeToggle.checked) elements.showAllToggle.checked = false;
+      visibleLimit = CONFIG.pageSize;
+      applyFiltersAndRender();
+    });
+
+    elements.showAllToggle.addEventListener("change", function () {
+      if (elements.showAllToggle.checked) elements.activeToggle.checked = false;
+      visibleLimit = CONFIG.pageSize;
+      applyFiltersAndRender();
+    });
+
+    function createRouteRow(number) {
+      const row = document.createElement("div");
+      row.className = "route-point-row";
+      row.dataset.routeRow = "";
+      row.innerHTML =
+        '<div class="route-input-wrap">' +
+          '<input class="route-point" type="text" draggable="true" data-route-point="' + number + '" placeholder="' + number + '. ????? ????????" autocomplete="off" aria-label="????? ???????? ' + number + '">' +
+          '<div class="route-suggestions" role="listbox"></div>' +
+        '</div>' +
+        '<button type="button" class="route-remove remove-route-point" aria-label="??????? ????? ' + number + '">×</button>';
+      return row;
+    }
+
+    function renumberRouteRows() {
+      elements.routePoints.querySelectorAll("[data-route-row]").forEach(function (row, index) {
+        const number = index + 1;
+        const input = row.querySelector("[data-route-point]");
+        const remove = row.querySelector(".route-remove");
+        input.dataset.routePoint = String(number);
+        input.placeholder = number + ". ????? ????????";
+        input.setAttribute("aria-label", "????? ???????? " + number);
+        remove.setAttribute("aria-label", (number <= 2 ? "???????? ????? " : "??????? ????? ") + number);
+      });
+    }
+
+    function closeRouteSuggestions(exceptRow) {
+      elements.routePoints.querySelectorAll(".route-suggestions.visible").forEach(function (suggestions) {
+        if (!exceptRow || suggestions.closest("[data-route-row]") !== exceptRow) {
+          suggestions.classList.remove("visible");
+          suggestions.replaceChildren();
+        }
+      });
+    }
+
+    function renderRouteSuggestions(input) {
+      const row = input.closest("[data-route-row]");
+      const suggestions = row.querySelector(".route-suggestions");
+      const query = normalizeText(input.value);
+      const matches = [];
+
+      for (let index = 0; index < locations.length && matches.length < 8; index += 1) {
+        if (!query || locations[index].searchText.includes(query)) matches.push(index);
+      }
+
+      const fragment = document.createDocumentFragment();
+      matches.forEach(function (index) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "route-suggestion";
+        button.dataset.routeSuggestionIndex = String(index);
+        button.setAttribute("role", "option");
+        button.textContent = locations[index].name;
+        fragment.appendChild(button);
+      });
+
+      closeRouteSuggestions(row);
+      suggestions.replaceChildren(fragment);
+      suggestions.classList.toggle("visible", matches.length > 0);
+    }
+
+    function resolveRouteInput(input) {
+      const storedIndex = Number(input.dataset.locationIndex);
+      if (Number.isInteger(storedIndex) && locations[storedIndex] && locations[storedIndex].name === input.value.trim()) {
+        return storedIndex;
+      }
+
+      const normalized = normalizeText(input.value);
+      const exactIndex = locations.findIndex(function (location) {
+        return location.normalizedName === normalized;
+      });
+
+      if (exactIndex >= 0) input.dataset.locationIndex = String(exactIndex);
+      else delete input.dataset.locationIndex;
+      return exactIndex;
+    }
+
+    function getRouteIds() {
+      return Array.from(elements.routePoints.querySelectorAll("[data-route-point]")).map(resolveRouteInput).filter(function (index) {
+        return index >= 0;
+      });
+    }
+
+    function refreshRouteSelection(focusedInput) {
+      routeSelection = new Set(getRouteIds());
+      const highlighted = focusedInput ? resolveRouteInput(focusedInput) : -1;
+      setHighlightedMarker(highlighted);
+      updateMarkerVisibility();
+    }
+
+    function updateRouteSelectionsAfterDataChange() {
+      elements.routePoints.querySelectorAll("[data-route-point]").forEach(function (input) {
+        delete input.dataset.locationIndex;
+        resolveRouteInput(input);
+      });
+      refreshRouteSelection(null);
+    }
+
+    elements.addRoutePoint.addEventListener("click", function () {
+      const nextNumber = elements.routePoints.querySelectorAll("[data-route-row]").length + 1;
+      elements.routePoints.appendChild(createRouteRow(nextNumber));
+      const input = elements.routePoints.querySelector("[data-route-row]:last-child [data-route-point]");
+      input.focus();
+      renderRouteSuggestions(input);
+    });
+
+    elements.routePoints.addEventListener("click", function (event) {
+      const suggestion = event.target.closest("[data-route-suggestion-index]");
+      if (suggestion) {
+        const index = Number(suggestion.dataset.routeSuggestionIndex);
+        const row = suggestion.closest("[data-route-row]");
+        const input = row.querySelector("[data-route-point]");
+        input.value = locations[index].name;
+        input.dataset.locationIndex = String(index);
+        closeRouteSuggestions();
+        refreshRouteSelection(input);
+        return;
+      }
+
+      const clear = event.target.closest(".clear-route-point");
+      if (clear) {
+        const input = clear.closest("[data-route-row]").querySelector("[data-route-point]");
+        input.value = "";
+        delete input.dataset.locationIndex;
+        refreshRouteSelection(input);
+        input.focus();
+        return;
+      }
+
+      const remove = event.target.closest(".remove-route-point");
+      if (remove) {
+        remove.closest("[data-route-row]").remove();
+        renumberRouteRows();
+        refreshRouteSelection(null);
+      }
+    });
+
+    elements.routePoints.addEventListener("input", function (event) {
+      const input = event.target.closest("[data-route-point]");
+      if (!input) return;
+      delete input.dataset.locationIndex;
+      resolveRouteInput(input);
+      renderRouteSuggestions(input);
+      refreshRouteSelection(input);
+    });
+
+    elements.routePoints.addEventListener("focusin", function (event) {
+      const input = event.target.closest("[data-route-point]");
+      if (!input) return;
+      renderRouteSuggestions(input);
+      refreshRouteSelection(input);
+    });
+
+    elements.routePoints.addEventListener("dragstart", function (event) {
+      const input = event.target.closest("[data-route-point]");
+      if (!input) return;
+      event.dataTransfer.setData("text/plain", input.dataset.routePoint);
+      input.classList.add("dragging");
+    });
+
+    elements.routePoints.addEventListener("dragend", function (event) {
+      const input = event.target.closest("[data-route-point]");
+      if (input) input.classList.remove("dragging");
+    });
+
+    elements.routePoints.addEventListener("dragover", function (event) {
+      if (event.target.closest("[data-route-point]")) event.preventDefault();
+    });
+
+    elements.routePoints.addEventListener("drop", function (event) {
+      const target = event.target.closest("[data-route-point]");
+      if (!target) return;
+      event.preventDefault();
+
+      const sourceNumber = event.dataTransfer.getData("text/plain");
+      const source = elements.routePoints.querySelector('[data-route-point="' + CSS.escape(sourceNumber) + '"]');
+      if (!source || source === target) return;
+
+      const sourceValue = source.value;
+      const sourceIndex = source.dataset.locationIndex;
+      source.value = target.value;
+      target.value = sourceValue;
+
+      if (target.dataset.locationIndex) source.dataset.locationIndex = target.dataset.locationIndex;
+      else delete source.dataset.locationIndex;
+
+      if (sourceIndex) target.dataset.locationIndex = sourceIndex;
+      else delete target.dataset.locationIndex;
+
+      refreshRouteSelection(target);
+    });
+
+    function openRouteInGoogleMaps() {
+      const ids = getRouteIds();
+      if (ids.length < 2) {
+        elements.routeResult.textContent = "???????? ??????? 2 ?????.";
+        return;
+      }
+
+      const points = ids.map(function (index) {
+        return locations[index].lat + "," + locations[index].lng;
+      });
+      const routeUrl = "https://www.google.com/maps/dir/" + points.join("/");
+      window.open(routeUrl, "_blank", "noopener");
+    }
+
+    async function buildRouteOnMap() {
+      const ids = getRouteIds();
+      if (ids.length < 2) {
+        elements.routeResult.textContent = "???????? ??????? 2 ?????.";
+        return;
+      }
+      if (!map || !window.google || !google.maps) {
+        elements.routeResult.textContent = "????? ??? ???????????.";
+        return;
+      }
+
+      elements.buildRoute.disabled = true;
+      elements.routeResult.textContent = "?????? ???????…";
+
+      try {
+        if (!directionsService) {
+          directionsService = new google.maps.DirectionsService();
+          directionsRenderer = new google.maps.DirectionsRenderer({
+            map: map,
+            suppressMarkers: false
+          });
+        }
+
+        const point = function (index) {
+          return {
+            lat: locations[index].lat,
+            lng: locations[index].lng
+          };
+        };
+
+        const result = await directionsService.route({
+          origin: point(ids[0]),
+          destination: point(ids[ids.length - 1]),
+          waypoints: ids.slice(1, -1).map(function (index) {
+            return {
+              location: point(index),
+              stopover: true
+            };
+          }),
+          travelMode: google.maps.TravelMode.DRIVING,
+          optimizeWaypoints: false
+        });
+
+        directionsRenderer.setDirections(result);
+        elements.routeResult.textContent = "??????? ???????? ?? ?????.";
+      } catch (error) {
+        console.error(error);
+        elements.routeResult.textContent = "?? ??????? ????????? ???????: " + (error.message || error);
+      } finally {
+        elements.buildRoute.disabled = false;
+      }
+    }
+
+    elements.openRoute.addEventListener("click", openRouteInGoogleMaps);
+    elements.buildRoute.addEventListener("click", buildRouteOnMap);
+
+    function markerColor(location) {
+      const status = normalizeText(location.status);
+      const cxStatus = normalizeText(location.cxStatus);
+      const active = isActiveLocation(location);
+      const completed = status.includes("completed");
+      const isWarehouse = String(location.locationType || "").trim().toUpperCase() === "WH";
+
+      if (cxStatus.includes("not started")) return "#111827";
+      if (status && !completed) return "#f2b01e";
+      if (active && !isWarehouse) return "#9bdc28";
+      if (isWarehouse) return "#2563eb";
+      return "#ef3f35";
+    }
+
+    function legacyMarkerIcon(location, highlighted) {
+      return {
+        path: "M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z",
+        fillColor: markerColor(location),
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+        scale: highlighted ? 1.05 : 0.75,
+        anchor: new google.maps.Point(0, 0)
+      };
+    }
+
+    function createPinElement(location, extraClass) {
+      const pin = document.createElement("div");
+      pin.className = "map-pin" + (extraClass ? " " + extraClass : "");
+      pin.style.setProperty("--pin-color", markerColor(location));
+      pin.setAttribute("aria-hidden", "true");
+      return pin;
+    }
+
+    async function loadExternalScript(src, globalTest) {
+      if (globalTest()) return;
+
+      await new Promise(function (resolve, reject) {
+        const existing = document.querySelector('script[data-src="' + CSS.escape(src) + '"]');
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener("error", reject, { once: true });
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.dataset.src = src;
+        script.onload = resolve;
+        script.onerror = function () {
+          reject(new Error("?? ??????? ????????? " + src));
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    function ensureMarkerClusterer() {
+      if (!markerClustererPromise) {
+        markerClustererPromise = loadExternalScript(CONFIG.markerClustererUrl, function () {
+          return Boolean(window.markerClusterer && window.markerClusterer.MarkerClusterer);
+        }).catch(function (error) {
+          console.warn("MarkerClusterer ??????????, ?????????? ??????? ???????.", error);
+        });
+      }
+      return markerClustererPromise;
+    }
+
+    async function ensureMarkerClass() {
+      if (advancedMarkerClass || !window.google || !google.maps) return;
+
+      try {
+        const markerLibrary = await google.maps.importLibrary("marker");
+        advancedMarkerClass = markerLibrary.AdvancedMarkerElement;
+        usingAdvancedMarkers = Boolean(advancedMarkerClass);
+      } catch (error) {
+        usingAdvancedMarkers = false;
+        console.warn("AdvancedMarkerElement ??????????, ?????????? ??????????? ??????.", error);
+      }
+    }
+
+    function removeMarkerFromMap(marker) {
+      if (!marker) return;
+      if ("map" in marker) marker.map = null;
+      else if (typeof marker.setMap === "function") marker.setMap(null);
+    }
+
+    function clearLocationMarkers() {
+      if (markerCluster) {
+        try {
+          markerCluster.clearMarkers();
+          markerCluster.setMap(null);
+        } catch (error) {
+          console.warn(error);
+        }
+        markerCluster = null;
+      }
+
+      markers.forEach(removeMarkerFromMap);
+      markers = [];
+    }
+
+    function createLocationMarker(location, index) {
+      let marker;
+
+      if (usingAdvancedMarkers) {
+        const content = createPinElement(location, "");
+        marker = new advancedMarkerClass({
+          position: { lat: location.lat, lng: location.lng },
+          title: location.crewLead ? location.name + " — " + location.crewLead : location.name,
+          content: content,
+          gmpClickable: true
+        });
+        marker.__pinElement = content;
+      } else {
+        marker = new google.maps.Marker({
+          position: { lat: location.lat, lng: location.lng },
+          title: location.crewLead ? location.name + " — " + location.crewLead : location.name,
+          icon: legacyMarkerIcon(location, false),
+          optimized: true
+        });
+      }
+
+      marker.__locationIndex = index;
+      marker.addListener("click", function () {
+        focusLocation(index);
+      });
+      return marker;
+    }
+
+    async function rebuildMarkers() {
+      if (!map || !locations.length || !window.google || !google.maps) return;
+
+      const buildToken = ++markerBuildToken;
+      clearLocationMarkers();
+
+      await Promise.all([
+        ensureMarkerClass(),
+        ensureMarkerClusterer()
+      ]);
+
+      if (buildToken !== markerBuildToken) return;
+      markers = new Array(locations.length);
+
+      const chunkSize = 60;
+      for (let start = 0; start < locations.length; start += chunkSize) {
+        if (buildToken !== markerBuildToken) return;
+
+        const end = Math.min(start + chunkSize, locations.length);
+        for (let index = start; index < end; index += 1) {
+          markers[index] = createLocationMarker(locations[index], index);
+        }
+        await nextFrame();
+      }
+
+      if (buildToken !== markerBuildToken) return;
+
+      const bounds = new google.maps.LatLngBounds();
+      locations.forEach(function (location) {
+        bounds.extend({ lat: location.lat, lng: location.lng });
+      });
+
+      if (!bounds.isEmpty()) map.fitBounds(bounds, 54);
+      updateMarkerVisibility();
+    }
+
+    function updateMarkerVisibility() {
+      if (!map || !markers.length) return;
+
+      const nextVisible = new Set(filteredIndexes);
+      routeSelection.forEach(function (index) {
+        nextVisible.add(index);
+      });
+      currentVisibleMarkerIndexes = nextVisible;
+
+      const visibleMarkers = Array.from(nextVisible).map(function (index) {
+        return markers[index];
+      }).filter(Boolean);
+
+      if (window.markerClusterer && window.markerClusterer.MarkerClusterer) {
+        if (!markerCluster) {
+          markerCluster = new window.markerClusterer.MarkerClusterer({
+            map: map,
+            markers: visibleMarkers
+          });
+        } else {
+          markerCluster.clearMarkers(true);
+          markerCluster.addMarkers(visibleMarkers, true);
+          markerCluster.render();
+        }
+      } else {
+        markers.forEach(function (marker, index) {
+          const shouldShow = nextVisible.has(index);
+          if ("map" in marker) marker.map = shouldShow ? map : null;
+          else marker.setMap(shouldShow ? map : null);
+        });
+      }
+    }
+
+    function setHighlightedMarker(index) {
+      if (highlightedMarkerIndex === index) return;
+
+      const updateOne = function (markerIndex, highlighted) {
+        const marker = markers[markerIndex];
+        const location = locations[markerIndex];
+        if (!marker || !location) return;
+
+        if (marker.__pinElement) {
+          marker.__pinElement.classList.toggle("highlighted", highlighted);
+          marker.zIndex = highlighted ? 1000 : null;
+        } else if (typeof marker.setIcon === "function") {
+          marker.setIcon(legacyMarkerIcon(location, highlighted));
+          marker.setZIndex(highlighted ? 1000 : undefined);
+        }
+      };
+
+      if (highlightedMarkerIndex >= 0) updateOne(highlightedMarkerIndex, false);
+      highlightedMarkerIndex = index;
+      if (highlightedMarkerIndex >= 0) updateOne(highlightedMarkerIndex, true);
+    }
+
+    function infoWindowHtml(location) {
+      const lines = [
+        "<strong>" + escapeHtml(location.name) + "</strong>",
+        location.address ? "<br><b>Address:</b> " + escapeHtml(location.address) : "",
+        location.marketState ? "<br><b>Market/Carrier States:</b> " + escapeHtml(location.marketState) : "",
+        location.cxStatus ? "<br><b>CX Status:</b> " + escapeHtml(location.cxStatus) : "",
+        location.status ? "<br><b>Status:</b> " + escapeHtml(location.status) : "",
+        location.crewLead ? "<br><b>Crew Lead:</b> " + escapeHtml(location.crewLead) : "",
+        '<br><a href="' + escapeHtml(location.mapsLink) + '" target="_blank" rel="noopener noreferrer">??????? ? Google Maps</a>'
+      ];
+      return '<div style="line-height:1.5">' + lines.join("") + "</div>";
+    }
+
+    function focusLocation(index) {
+      const location = locations[index];
+      const marker = markers[index];
+      if (!location) return;
+
+      setHighlightedMarker(index);
+      elements.places.querySelectorAll("[data-index]").forEach(function (card) {
+        card.classList.toggle("active", Number(card.dataset.index) === index);
+      });
+
+      if (!map || !marker || !infoWindow) return;
+
+      map.panTo({ lat: location.lat, lng: location.lng });
+      if ((map.getZoom() || 0) < 8) map.setZoom(8);
+      infoWindow.setContent(infoWindowHtml(location));
+
+      try {
+        infoWindow.open({ map: map, anchor: marker });
+      } catch (error) {
+        infoWindow.open(map, marker);
+      }
+    }
+
+    async function initializeBaseMap() {
+      const mapsLibrary = await google.maps.importLibrary("maps");
+      map = new mapsLibrary.Map(document.getElementById("map"), {
+        center: { lat: 38.5, lng: -90.0 },
+        zoom: 4,
+        mapId: CONFIG.googleMapId || "DEMO_MAP_ID",
+        clickableIcons: false,
+        gestureHandling: "greedy",
+        streetViewControl: false
+      });
+      infoWindow = new google.maps.InfoWindow();
+      elements.mapMessage.classList.add("hidden");
+
+      if (locations.length) rebuildMarkers();
+    }
+
+    function loadGoogleMaps() {
+      return new Promise(function (resolve, reject) {
+        if (!CONFIG.googleMapsApiKey || CONFIG.googleMapsApiKey.includes("PASTE_")) {
+          reject(new Error("???????? Google Maps API key ? CONFIG.googleMapsApiKey"));
+          return;
+        }
+
+        window.__locationsMapGoogleReady = function () {
+          resolve();
+          delete window.__locationsMapGoogleReady;
+        };
+
+        const script = document.createElement("script");
+        script.src = "https://maps.googleapis.com/maps/api/js?key=" +
+          encodeURIComponent(CONFIG.googleMapsApiKey) +
+          "&callback=__locationsMapGoogleReady&loading=async&v=weekly";
+        script.async = true;
+        script.onerror = function () {
+          reject(new Error("Google Maps API ?? ??????????"));
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    async function startMap() {
+      try {
+        await loadGoogleMaps();
+        await initializeBaseMap();
+      } catch (error) {
+        if (!String(error.message || error).includes("???????? Google Maps API key")) {
+          console.error(error);
+        }
+        elements.mapMessage.textContent = error.message || "????? ?? ???????????";
+        elements.mapMessage.classList.remove("hidden");
+      }
+    }
+
+    window.gm_authFailure = function () {
+      elements.mapMessage.textContent = "Google ???????? API key. ????????? API, billing ? HTTP referrer.";
+      elements.mapMessage.classList.remove("hidden");
+    };
+
+    function clearHotelMarkers() {
+      hotelMarkers.forEach(removeMarkerFromMap);
+      hotelMarkers = [];
+    }
+
+    async function findHotels() {
+      const query = normalizeText(elements.search.value);
+      if (!query) {
+        elements.status.textContent = "??????? ???????? ??????? ? ??????";
+        return;
+      }
+
+      const location = locations.find(function (item) {
+        return item.normalizedName === query;
+      }) || locations.find(function (item) {
+        return item.normalizedName.includes(query);
+      });
+
+      if (!location) {
+        elements.status.textContent = "??????? ???????? ??????? ? ??????";
+        return;
+      }
+      if (!map || !window.google || !google.maps) {
+        elements.status.textContent = "????? ??? ???????????";
+        return;
+      }
+
+      clearHotelMarkers();
+      elements.findHotel.disabled = true;
+      elements.status.textContent = "????? ?????? ?????…";
+
+      try {
+        const placesLibrary = await google.maps.importLibrary("places");
+        const result = await placesLibrary.Place.searchNearby({
+          fields: ["displayName", "location", "formattedAddress", "googleMapsURI", "rating"],
+          includedPrimaryTypes: ["hotel"],
+          maxResultCount: 20,
+          rankPreference: "DISTANCE",
+          locationRestriction: {
+            center: { lat: location.lat, lng: location.lng },
+            radius: 10000
+          }
+        });
+
+        const places = result.places || [];
+        places.forEach(function (place) {
+          let marker;
+
+          if (usingAdvancedMarkers && advancedMarkerClass) {
+            const pin = document.createElement("div");
+            pin.className = "map-pin hotel";
+            marker = new advancedMarkerClass({
+              map: map,
+              position: place.location,
+              title: place.displayName || "Hotel",
+              content: pin,
+              gmpClickable: true
+            });
+          } else {
+            marker = new google.maps.Marker({
+              map: map,
+              position: place.location,
+              title: place.displayName || "Hotel",
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#7c3aed",
+                fillOpacity: 1,
+                strokeColor: "#ffffff",
+                strokeWeight: 2
+              }
+            });
+          }
+
+          marker.addListener("click", function () {
+            const link = place.googleMapsURI
+              ? '<br><a href="' + escapeHtml(safeHttpUrl(place.googleMapsURI, "#")) + '" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>'
+              : "";
+            const content =
+              "<strong>" + escapeHtml(place.displayName || "Hotel") + "</strong>" +
+              (place.formattedAddress ? "<br>" + escapeHtml(place.formattedAddress) : "") +
+              (place.rating ? "<br>Rating: " + escapeHtml(place.rating) : "") +
+              link;
+            infoWindow.setContent(content);
+            try {
+              infoWindow.open({ map: map, anchor: marker });
+            } catch (error) {
+              infoWindow.open(map, marker);
+            }
+          });
+
+          hotelMarkers.push(marker);
+        });
+
+        map.panTo({ lat: location.lat, lng: location.lng });
+        map.setZoom(11);
+        elements.status.textContent = places.length + " hotels found nearby";
+      } catch (error) {
+        console.error(error);
+        elements.status.textContent = "?????? ?????? ??????: " + (error.message || "??????????? ??????");
+      } finally {
+        elements.findHotel.disabled = false;
+      }
+    }
+
+    elements.findHotel.addEventListener("click", findHotels);
+
+    /*
+      ????? ? ??????? ??????????? ????????????.
+      ??? ????????? ???????? ?????? ????? ??? ????????? ????????.
+    */
+    startMap();
+    loadLocationData();
   </script>
 </body>
 </html>
