@@ -224,11 +224,12 @@ const nameI = find(['name','название','локация','место','lin
       const hasSearchQuery = Boolean(query.trim());
       const matchesFilters = location => filterFields.every(field => !selected[field.key].length || selected[field.key].includes(location[field.key]));
       const filterMatches = locations.filter(matchesFilters);
-      const searchMatches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(query.toLowerCase()) && matchesFilters(location));
+      const searchResults = hasSearchQuery ? locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
+      const searchMatches = searchResults.filter(matchesFilters);
       const activeMatches = locations.filter(location => location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && matchesFilters(location));
-      const searchedLocation = hasSearchQuery ? (locations.find(location => location.name.toLowerCase() === query.trim().toLowerCase()) || locations.find(location => `${location.name} ${location.note}`.toLowerCase().includes(query.toLowerCase()))) : null;
+      const searchedLocation = searchResults.find(location => location.name.toLowerCase() === query.trim().toLowerCase()) || searchResults[0] || null;
       const filtered = showAll ? searchMatches : activeOnly ? (hasSearchQuery && searchedLocation ? [searchedLocation] : activeMatches) : [];
-      const mapLocations = [...(activeOnly ? activeMatches : showAll ? filterMatches : []), ...(searchedLocation ? [searchedLocation] : [])];
+      const mapLocations = [...(activeOnly ? activeMatches : showAll ? filterMatches : []), ...searchResults];
       const visible = new Set([...mapLocations, ...(displayLocations ? [...routeSelection].map(index => locations[index]).filter(Boolean) : [])]);
       const searchedIndex = searchedLocation ? locations.indexOf(searchedLocation) : -1;
       markers.forEach((marker, index) => { const highlighted = index === searchedIndex || index === highlightedRouteIndex; marker.setVisible(visible.has(locations[index])); marker.setIcon(markerIcon(locations[index], highlighted)); marker.setZIndex(index === searchedIndex ? 100000 : undefined); });
