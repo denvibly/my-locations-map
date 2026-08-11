@@ -41,6 +41,8 @@
     .location-toggles { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
     .location-toggle { display:flex; gap:9px; align-items:center; padding:8px 10px; border-radius:9px; background:#f7faf9; font-size:13px; cursor:pointer; }
     .location-toggle input { width:17px; height:17px; accent-color:var(--accent); }
+    .map-location-label-layer { position:absolute; inset:0; pointer-events:none; }
+    .map-location-label { position:absolute; max-width:170px; padding:3px 6px; border:1px solid rgba(16,33,43,.18); border-radius:5px; background:rgba(255,255,255,.92); box-shadow:0 2px 7px rgba(15,23,42,.16); color:var(--ink); font-size:10px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%, -100%); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
     .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
     .legend span { white-space:nowrap; }
@@ -87,6 +89,7 @@
       <h2 class="filters-title">Filters</h2>
       <div id="filters" class="filters"></div>
       <div class="location-toggles">
+        <label class="location-toggle"><input id="showLabelsToggle" type="checkbox"> <span>Show Labels</span></label>
         <label class="location-toggle"><input id="activeLocationsToggle" type="checkbox"> <span>Active Locations</span></label>
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox" checked> <span>Show all locations</span></label>
       </div>
@@ -114,7 +117,47 @@
     const fallbackLocations = [
       { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
     ];
-    let map, infoWindow, directionsService, directionsRenderer, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
+    let map, infoWindow, directionsService, directionsRenderer, locationLabels, markers = [], hotelMarkers = [], locations = [], routeSelection = new Set();
+
+    function createLocationLabelsOverlay(mapInstance, items) { class LocationLabelsOverlay extends google.maps.OverlayView {
+      constructor(mapInstance, items) { super(); this.mapInstance = mapInstance; this.items = items; this.enabled = false; this.visibleIndexes = []; this.nodes = new Map(); this.setMap(mapInstance); }
+      onAdd() { this.layer = document.createElement('div'); this.layer.className = 'map-location-label-layer'; this.getPanes().floatPane.appendChild(this.layer); }
+      onRemove() { this.layer?.remove(); this.nodes.clear(); }
+      setEnabled(enabled) { this.enabled = enabled; if (this.layer) this.layer.style.display = enabled ? 'block' : 'none'; this.draw(); }
+      setVisibleIndexes(indexes) { this.visibleIndexes = indexes; this.draw(); }
+      draw() {
+        if (!this.layer || !this.enabled) return;
+        const projection = this.getProjection(); if (!projection) return;
+        const activeIndexes = new Set(this.visibleIndexes);
+        this.nodes.forEach((node, index) => { if (!activeIndexes.has(index)) { node.remove(); this.nodes.delete(index); } });
+        const placed = [];
+        const overlapArea = (first, second) => Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+        this.visibleIndexes.forEach(index => {
+          const location = this.items[index]; if (!location) return;
+          let node = this.nodes.get(index);
+          if (!node) { node = document.createElement('div'); node.className = 'map-location-label'; node.textContent = location.name; this.layer.appendChild(node); this.nodes.set(index, node); }
+          const pixel = projection.fromLatLngToDivPixel(new google.maps.LatLng(location.lat, location.lng));
+          node.style.display = 'block';
+          const width = node.offsetWidth; const height = node.offsetHeight;
+          let placement;
+          let closestPlacement;
+          let smallestOverlap = Infinity;
+          for (let attempt = 0; attempt < 80; attempt += 1) {
+            const angle = attempt * 2.399963229728653;
+            const radius = attempt === 0 ? 8 : 14 + Math.sqrt(attempt) * 12;
+            const x = pixel.x + Math.cos(angle) * radius;
+            const y = pixel.y - 8 + Math.sin(angle) * radius;
+            const rect = { left:x - width / 2, right:x + width / 2, top:y - height, bottom:y };
+            const overlap = placed.reduce((total, other) => total + overlapArea(rect, other), 0);
+            if (overlap === 0) { placement = { x, y, rect }; break; }
+            if (overlap < smallestOverlap) { smallestOverlap = overlap; closestPlacement = { x, y, rect }; }
+          }
+          if (!placement) placement = closestPlacement || { x:pixel.x, y:pixel.y - 8, rect:{ left:pixel.x - width / 2, right:pixel.x + width / 2, top:pixel.y - 8 - height, bottom:pixel.y - 8 } };
+          node.style.left = `${placement.x}px`; node.style.top = `${placement.y}px`; placed.push(placement.rect);
+        });
+      }
+    }
+    return new LocationLabelsOverlay(mapInstance, items); }
 
     function parseCsv(text) {
       const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
@@ -158,6 +201,7 @@ const nameI = find(['name','название','локация','место','lin
       locations.forEach(location => { const option = document.createElement('option'); option.value = location.name; routeLocations.appendChild(option); });
       document.querySelector('#addRoutePoint').addEventListener('click', () => { const current = document.querySelectorAll('[data-route-point]').length; const row = document.createElement('div'); row.className = 'route-point-row'; row.innerHTML = `<input type="text" draggable="true" data-route-point="${current + 1}" list="routeLocations" placeholder="${current + 1}. Точка маршрута" autocomplete="off"><button type="button" class="remove-route-point" aria-label="Удалить точку">×</button>`; document.querySelector('#routePoints').insertBefore(row, document.querySelector('#addRoutePoint')); });
       document.querySelector('#routePoints').addEventListener('click', event => { if (event.target.matches('.clear-route-point')) { const input = event.target.closest('.route-point-row').querySelector('[data-route-point]'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles:true })); return; } if (!event.target.matches('.remove-route-point')) return; event.target.closest('.route-point-row').remove(); [...document.querySelectorAll('[data-route-point]')].forEach((input, index) => { input.dataset.routePoint = index + 1; input.placeholder = `${index + 1}. Точка маршрута`; }); routeSelection = new Set([...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0)); });
+      document.querySelector('#showLabelsToggle').addEventListener('change', event => { locationLabels.setEnabled(event.target.checked); renderList(document.querySelector('#search').value); });
       document.querySelector('#activeLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#showAllLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
       document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) document.querySelector('#activeLocationsToggle').checked = false; renderList(document.querySelector('#search').value); });
       const routePoints = document.querySelector('#routePoints');
@@ -186,6 +230,7 @@ const nameI = find(['name','название','локация','место','lin
       const mapLocations = activeOnly ? [...activeMatches, ...(searchedLocation ? [searchedLocation] : [])] : filtered;
       const visible = new Set([...mapLocations, ...(displayLocations ? [...routeSelection].map(index => locations[index]).filter(Boolean) : [])]);
       markers.forEach((marker, index) => marker.setVisible(visible.has(locations[index])));
+      if (locationLabels) locationLabels.setVisibleIndexes([...visible].map(location => locations.indexOf(location)).filter(index => index >= 0));
       document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = `${locations.length} ${locations.length === 1 ? 'локация' : 'локаций'}`;
       const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>Address:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.marketState ? `<strong>Market/Carrier States:</strong> ${escapeHtml(x.marketState)}<br>` : ''}${x.cxStatus ? `<strong>CX Status:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>Status:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>Crew Lead:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть в Google Maps</a></p></article>`).join('') : '<div class="empty">Ничего не найдено.</div>';
       list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
@@ -195,7 +240,7 @@ const nameI = find(['name','название','локация','место','lin
     function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
     function buildRouteOnMap() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const point = index => ({ lat:locations[index].lat, lng:locations[index].lng }); directionsService.route({ origin:point(ids[0]), destination:point(ids.at(-1)), waypoints:ids.slice(1, -1).map(index => ({ location:point(index), stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); document.querySelector('#routeResult').textContent = 'Маршрут построен на карте.'; }).catch(error => { console.error(error); document.querySelector('#routeResult').textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
     function focusLocation(index) { const x = locations[index]; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>Address:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<br><b>Market/Carrier States:</b> ${escapeHtml(x.marketState)}` : ''}${x.cxStatus ? `<br><b>CX Status:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>Status:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>Week:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>Crew Lead:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">Открыть в Google Maps</a></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
-    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
+    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow(); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:x.crewLead ? `${x.name} — ${x.crewLead}` : x.name, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
     document.querySelector('#search').addEventListener('input', e => { renderSearchSuggestions(e.target.value); renderList(e.target.value); });
