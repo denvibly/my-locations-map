@@ -61,7 +61,10 @@
     .legend-black { background:#111827; }
     .legend-lime { background:#9bdc28; }
     .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
-    .route h3 { margin:0 0 9px; font-size:14px; }
+    .route-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+    .route h3 { margin:0; font-size:14px; }
+    .clear-built-route { width:30px !important; height:30px; padding:0 !important; border:1px solid #cbd9d7 !important; border-radius:8px !important; background:#f4f8f7 !important; color:#60747a !important; font-size:17px !important; line-height:1 !important; }
+    .clear-built-route:hover { background:#fde8e7 !important; border-color:#efb2ad !important; color:#b42318 !important; }
     .route input { width:100%; margin-bottom:7px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
     .route button { width:100%; padding:10px; border:0; border-radius:9px; background:var(--accent); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
     .route-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin-top:7px; }
@@ -110,7 +113,7 @@
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox"> <span>Show all locations</span></label>
       </div>
       <div class="route">
-        <h3>Маршрут</h3>
+        <div class="route-heading"><h3>Маршрут</h3><button id="clearBuiltRoute" class="clear-built-route" type="button" title="Очистить построенный маршрут" aria-label="Очистить построенный маршрут">⌫</button></div>
         <div id="routePoints"></div>
         <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute">Построить маршрут</button></div>
         <div id="routeResult" class="route-result">Выберите точки по порядку посещения.</div>
@@ -232,6 +235,7 @@ const nameI = find(['name','название','локация','место','lin
       routePoints.addEventListener('drop', event => { const target = event.target.closest('[data-route-point]'); if (!target) return; event.preventDefault(); const source = [...routePoints.querySelectorAll('[data-route-point]')].find(input => input.dataset.routePoint === event.dataTransfer.getData('text/plain')); if (!source || source === target) return; const sourceValue = source.value; source.value = target.value; target.value = sourceValue; clearBuiltRoute(); });
       document.querySelector('#openRoute').addEventListener('click', openRouteInGoogleMaps);
       document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
+      document.querySelector('#clearBuiltRoute').addEventListener('click', () => { clearBuiltRoute(); document.querySelector('#routeResult').textContent = 'Маршрут очищен с карты.'; });
     }
     function renderList(query = '') {
       const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
@@ -262,7 +266,7 @@ const nameI = find(['name','название','локация','место','lin
     function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const active = location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations'); const completed = status.includes('completed'); const isWh = location.locationType.toUpperCase() === 'WH'; const color = cxStatus.includes('not started') ? '#111827' : status && !completed ? '#f2b01e' : active && !isWh ? '#9bdc28' : isWh ? '#2563eb' : '#ef3f35'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) }; }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
     function routeLetter(index) { return String.fromCharCode(65 + index); }
-    function clearBuiltRoute() { document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); }
+    function clearBuiltRoute() { document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
     function openRouteInGoogleMaps() { const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } const points = ids.map(index => `${locations[index].lat},${locations[index].lng}`); window.open(`https://www.google.com/maps/dir/${points.join('/')}`, '_blank'); }
     function buildRouteOnMap() { const routeResult = document.querySelector('#routeResult'); const ids = [...document.querySelectorAll('[data-route-point]')].map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0); if (ids.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } const point = index => ({ lat:locations[index].lat, lng:locations[index].lng }); directionsService.route({ origin:point(ids[0]), destination:point(ids.at(-1)), waypoints:ids.slice(1, -1).map(index => ({ location:point(index), stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>DRIVING TIME</small><strong>${formatDuration(seconds)}</strong></span>`; }).catch(error => { console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
     function addLocationToRoute(index) { const location = locations[index]; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = location.name; target.dispatchEvent(new Event('input', { bubbles:true })); document.querySelector('#routeResult').textContent = `${location.name} added to route.`; }
