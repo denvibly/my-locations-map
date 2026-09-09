@@ -48,7 +48,12 @@
     .location-toggles { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
     .location-toggle { display:flex; gap:9px; align-items:center; padding:8px 10px; border-radius:9px; background:#f7faf9; font-size:13px; cursor:pointer; }
     .location-toggle input { width:17px; height:17px; accent-color:var(--accent); }
-    .location-toggle.sub-toggle { margin-top:-5px; margin-left:18px; padding:6px 10px; background:#f0f7f5; color:var(--muted); font-size:12px; }
+    .active-toggle-row { justify-content:space-between; flex-wrap:nowrap; }
+    .active-toggle-main, .active-hide-options, .active-hide-option { display:flex; align-items:center; }
+    .active-toggle-main { gap:9px; cursor:pointer; }
+    .active-hide-options { gap:7px; margin-left:auto; color:var(--ink); font-size:10px; font-weight:700; }
+    .active-hide-option { gap:3px; cursor:pointer; white-space:nowrap; }
+    .active-hide-option input { width:14px; height:14px; }
     .map-location-label-layer { position:absolute; inset:0; pointer-events:none; }
     .map-location-label { position:absolute; max-width:170px; padding:3px 6px; border:1px solid rgba(16,33,43,.18); border-radius:5px; background:rgba(255,255,255,.92); box-shadow:0 2px 7px rgba(15,23,42,.16); color:var(--ink); font-size:10px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%, -100%); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
@@ -118,8 +123,7 @@
       <div id="filters" class="filters"></div>
       <div class="location-toggles">
         <label class="location-toggle"><input id="showLabelsToggle" type="checkbox"> <span>Show Labels</span></label>
-        <label class="location-toggle"><input id="activeLocationsToggle" type="checkbox"> <span>Active Locations</span></label>
-        <label class="location-toggle sub-toggle"><input id="hideActiveNotStartedToggle" type="checkbox"> <span>Hide Not Started</span></label>
+        <div class="location-toggle active-toggle-row"><label class="active-toggle-main"><input id="activeLocationsToggle" type="checkbox"> <span>Active Locations</span></label><div class="active-hide-options"><label class="active-hide-option"><input id="hideActiveNotStartedToggle" type="checkbox"> <span>Not Started</span></label><label class="active-hide-option"><input id="hideActiveWhToggle" type="checkbox"> <span>WH</span></label><label class="active-hide-option"><input id="hideActiveIphToggle" type="checkbox"> <span>I,P,H</span></label></div></div>
         <label class="location-toggle"><input id="notStartedLocationsToggle" type="checkbox"> <span>Not Started</span></label>
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox"> <span>Show all locations</span></label>
       </div>
@@ -235,6 +239,8 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#showLabelsToggle').addEventListener('change', event => { locationLabels.setEnabled(event.target.checked); renderList(document.querySelector('#search').value); });
       document.querySelector('#activeLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#notStartedLocationsToggle').checked = false; document.querySelector('#showAllLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       document.querySelector('#hideActiveNotStartedToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
+      document.querySelector('#hideActiveWhToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
+      document.querySelector('#hideActiveIphToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#notStartedLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#showAllLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#notStartedLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       const routePoints = document.querySelector('#routePoints');
@@ -255,6 +261,8 @@ const nameI = find(['name','название','локация','место','lin
       const showAll = document.querySelector('#showAllLocationsToggle')?.checked ?? true;
       const activeOnly = document.querySelector('#activeLocationsToggle')?.checked ?? false;
       const hideActiveNotStarted = document.querySelector('#hideActiveNotStartedToggle')?.checked ?? false;
+      const hideActiveWh = document.querySelector('#hideActiveWhToggle')?.checked ?? false;
+      const hideActiveIph = document.querySelector('#hideActiveIphToggle')?.checked ?? false;
       const notStartedOnly = document.querySelector('#notStartedLocationsToggle')?.checked ?? false;
       const hasSearchQuery = Boolean(query.trim());
       const startAfter = dateNumber(document.querySelector('#startAfterDate')?.value);
@@ -264,7 +272,7 @@ const nameI = find(['name','название','локация','место','lin
       const filterMatches = locations.filter(matchesFilters);
       const searchResults = hasSearchQuery ? locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
       const searchMatches = searchResults.filter(matchesFilters);
-      const activeMatches = locations.filter(location => location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveNotStarted || !location.cxStatus.toLowerCase().includes('not started')) && matchesFilters(location));
+      const activeMatches = locations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveNotStarted || !isNotStarted) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && matchesFilters(location); });
       const notStartedMatches = locations.filter(location => location.cxStatus.toLowerCase().includes('not started') && matchesFilters(location));
       const searchedLocation = searchResults.find(location => location.name.toLowerCase() === query.trim().toLowerCase()) || searchResults[0] || null;
       const modeMatches = activeOnly ? activeMatches : notStartedOnly ? notStartedMatches : showAll || hasSelectedFilters ? filterMatches : [];
