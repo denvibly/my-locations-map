@@ -71,6 +71,10 @@
     .legend-black { background:#111827; }
     .legend-lime { background:#9bdc28; }
     .legend-added { background:#0f766e; }
+    .market-legend { display:grid; gap:6px; margin-top:12px; font-size:11px; color:var(--ink); }
+    .market-legend:empty { display:none; }
+    .market-legend span { display:flex; align-items:center; gap:7px; overflow-wrap:anywhere; }
+    .market-legend i { width:12px; height:12px; flex:0 0 12px; border-radius:50%; }
     .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
     .route-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
     .route h3 { margin:0; font-size:14px; }
@@ -137,6 +141,7 @@
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox"> <span data-i18n="showAll">Показать все локации</span></label>
       </div>
       <div class="route">
+        <div id="marketLegend" class="market-legend"></div>
         <div class="route-heading"><h3 data-i18n="route">Маршрут</h3><button id="clearBuiltRoute" class="clear-built-route" type="button" title="Очистить построенный маршрут" aria-label="Очистить построенный маршрут">⌫</button></div>
         <div id="routePoints"></div>
         <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute" data-i18n="buildRoute">Построить маршрут</button></div>
@@ -307,13 +312,92 @@ const nameI = find(['name','название','локация','место','lin
       const searchedIndex = searchedLocation ? locations.indexOf(searchedLocation) : -1;
       markers.forEach((marker, index) => { const highlighted = index === searchedIndex || index === highlightedRouteIndex; marker.setVisible(visible.has(locations[index])); marker.setIcon(markerIcon(locations[index], highlighted)); marker.setZIndex(index === searchedIndex ? 100000 : undefined); });
       if (locationLabels) locationLabels.setVisibleIndexes([...visible].map(location => locations.indexOf(location)).filter(index => index >= 0));
+      renderMarketLegend([...visible]);
       document.querySelector('#count').textContent = filtered.length; document.querySelector('#status').textContent = '';
       const list = document.querySelector('#places'); list.innerHTML = filtered.length ? filtered.map(x => `<article class="place" data-index="${locations.indexOf(x)}"><h2>${escapeHtml(x.name)}</h2><p>${x.address ? `<strong>${t('address')}:</strong> ${escapeHtml(x.address)}<br>` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<strong>CX ${t('status')}:</strong> ${escapeHtml(x.cxStatus)}<br>` : ''}${x.status ? `<strong>${t('status')}:</strong> ${escapeHtml(x.status)}<br>` : ''}${x.crewLead ? `<strong>${t('crewLead')}:</strong> ${escapeHtml(x.crewLead)}<br>` : ''}<a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${t('openMaps')}</a></p></article>`).join('') : `<div class="empty">${t('noResults')}</div>`;
       list.querySelectorAll('.place').forEach(el => el.addEventListener('click', () => focusLocation(Number(el.dataset.index))));
     }
     function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
     function dateNumber(value) { const text = String(value || '').trim(); const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/) || text.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/); if (!match) return 0; const year = match.length === 4 && match[1].length === 4 ? Number(match[1]) : Number(match[3]); const month = match.length === 4 && match[1].length === 4 ? Number(match[2]) : Number(match[1]); const day = match.length === 4 && match[1].length === 4 ? Number(match[3]) : Number(match[2]); const timestamp = Date.UTC(year, month - 1, day); return Number.isNaN(timestamp) ? 0 : timestamp; }
-    function markerIcon(location, highlighted = false) { const status = location.status.trim().toLowerCase(); const cxStatus = location.cxStatus.trim().toLowerCase(); const active = location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations'); const completed = status.includes('completed'); const isPaused = /pending|on[ -]?hold/.test(`${status} ${cxStatus}`); const isWh = location.locationType.toUpperCase() === 'WH'; const color = cxStatus.includes('not started') ? '#111827' : isPaused ? '#ef3f35' : isWh ? '#2563eb' : active ? '#9bdc28' : status && !completed ? '#f2b01e' : '#7c3aed'; return { path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) }; }
+    const markerShapes = {
+      active:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z',
+      warehouse:'M0 0L-20-24L0-48L20-24Z',
+      completed:'M0 0C-27 0-27-40 0-40C27-40 27 0 0 0Z',
+      issue:'M0-44L23 0L-23 0Z',
+      paused:'M-20 0L-20-40L20-40L20 0Z',
+      notStarted:'M-12 0L-24-21L-12-42L12-42L24-21L12 0Z',
+      added:'M0-46L7-30L25-28L12-16L16 0L0-8L-16 0L-12-16L-25-28L-7-30Z'
+    };
+    function updateLegendShapes() {
+      const shapes = { red:'completed', yellow:'issue', purple:'paused', black:'notStarted', lime:'active', blue:'warehouse', added:'added' };
+      Object.entries(shapes).forEach(([className, category]) => {
+        const icon = document.querySelector(`.legend-${className}`);
+        const color = getComputedStyle(icon).backgroundColor;
+        icon.style.cssText = 'display:inline-block;width:18px;height:20px;margin-right:4px;border:0;border-radius:0;box-shadow:none;transform:none;vertical-align:middle;background:transparent';
+        icon.innerHTML = `<svg viewBox="-29 -52 58 56" width="18" height="20" aria-hidden="true"><path d="${markerShapes[category]}" fill="${color}" stroke="#ffffff" stroke-width="3"/></svg>`;
+      });
+    }
+    const marketColors = new Map();
+    function marketKey(location) { return String(location.marketState || '').trim().replace(/\s+/g, ' ').toUpperCase(); }
+    function marketColor(location) {
+      const key = marketKey(location);
+      if (!key) return null;
+      if (!marketColors.size) {
+        marketColors.set('SBA TMO TN/KY', '#1565c0');
+        marketColors.set('BETACOM TMO AL/MS', '#e87500');
+        const candidates = [];
+        for (const red of [30, 90, 150, 210]) {
+          for (const green of [30, 90, 150, 210]) {
+            for (const blue of [30, 90, 150, 210]) {
+              if (Math.max(red, green, blue) - Math.min(red, green, blue) < 100) continue;
+              candidates.push('#' + [red, green, blue].map(value => value.toString(16).padStart(2, '0')).join(''));
+            }
+          }
+        }
+        const channels = color => [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16));
+        const distance = (first, second) => {
+          const firstRgb = channels(first), secondRgb = channels(second);
+          return firstRgb.reduce((sum, value, index) => sum + [0.3, 0.59, 0.11][index] * (value - secondRgb[index]) ** 2, 0);
+        };
+        const markets = [...new Set(locations.filter(usesMarketColor).map(marketKey))].sort();
+        markets.forEach(market => {
+          if (marketColors.has(market)) return;
+          if (!candidates.length) {
+            marketColors.set(market, `hsl(${(marketColors.size * 137.508) % 360}, 70%, 40%)`);
+            return;
+          }
+          let bestColor = candidates[0], bestDistance = -1;
+          candidates.forEach(candidate => {
+            const separation = Math.min(...[...marketColors.values()].filter(used => used.startsWith('#')).map(used => distance(candidate, used)));
+            if (separation > bestDistance) { bestDistance = separation; bestColor = candidate; }
+          });
+          marketColors.set(market, bestColor);
+          candidates.splice(candidates.indexOf(bestColor), 1);
+        });
+      }
+      return marketColors.get(key) || '#64748b';
+    }
+    function usesMarketColor(location) {
+      const status = `${location.status || ''} ${location.cxStatus || ''}`.toLowerCase();
+      const warehouse = String(location.locationType || '').trim().toUpperCase() === 'WH';
+      const active = String(location.active || '').replace(/\s+/g, ' ').toLowerCase().includes('active locations');
+      return Boolean(marketKey(location)) && (warehouse || active) && !/not started|pending|on[ -]?hold|issue/.test(status);
+    }
+    function renderMarketLegend(visible) {
+      const markets = [...new Map(visible.filter(usesMarketColor).map(location => [marketKey(location), location])).values()].sort((first, second) => marketKey(first).localeCompare(marketKey(second)));
+      document.querySelector('#marketLegend').innerHTML = markets.length ? `<b>${language === 'ru' ? 'Цвета маркетов · ◆ склад, ● проект' : 'Market colors · ◆ warehouse, ● project'}</b>${markets.map(location => `<span><i style="background:${marketColor(location)}"></i>${escapeHtml(location.marketState)}</span>`).join('')}` : '';
+      document.querySelector('.legend-lime path')?.setAttribute('fill', '#64748b');
+      document.querySelector('.legend-blue path')?.setAttribute('fill', '#64748b');
+    }
+    function markerIcon(location, highlighted = false) {
+      const status = String(location.status || '').trim().toLowerCase();
+      const cxStatus = String(location.cxStatus || '').trim().toLowerCase();
+      const active = String(location.active || '').replace(/\s+/g, ' ').toLowerCase().includes('active locations');
+      const isWh = String(location.locationType || '').trim().toUpperCase() === 'WH';
+      const color = usesMarketColor(location) ? marketColor(location) : cxStatus.includes('not started') ? '#111827' : /pending|on[ -]?hold/.test(`${status} ${cxStatus}`) ? '#ef3f35' : /issue/.test(`${status} ${cxStatus}`) ? '#f2b01e' : isWh ? '#2563eb' : active ? '#9bdc28' : status && !status.includes('completed') ? '#f2b01e' : '#7c3aed';
+      const category = isWh ? 'warehouse' : color === '#111827' ? 'notStarted' : color === '#ef3f35' ? 'paused' : color === '#f2b01e' ? 'issue' : active ? 'active' : 'completed';
+      return { path:markerShapes[category], fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
+    }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
     function routeLetter(index) { return String.fromCharCode(65 + index); }
     function clearBuiltRoute() { document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
@@ -332,11 +416,11 @@ const nameI = find(['name','название','локация','место','lin
     window.initMap = initMap;
     function coordinatesFromQuery(query) { const match = String(query).trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/); if (!match) return null; const lat = Number(match[1]); const lng = Number(match[2]); return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; }
     function clearExternalSearchMarker() { if (externalSearchMarker) externalSearchMarker.setMap(null); externalSearchMarker = null; externalSearchResult = null; }
-    function showExternalSearchResult({ name, position, address = '', mapsUri = '' }) { const lat = typeof position.lat === 'function' ? position.lat() : position.lat; const lng = typeof position.lng === 'function' ? position.lng() : position.lng; const point = { lat:Number(lat), lng:Number(lng) }; if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) throw new Error('Google не вернул координаты места.'); clearExternalSearchMarker(); externalSearchResult = { ...point, name, address, mapsUri, routeLabel:name === 'Coordinates' ? `${point.lat}, ${point.lng}` : name }; const openInfo = () => { const link = mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5"><strong>${escapeHtml(name)}</strong>${address ? `<br>${escapeHtml(address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addExternalSearchResultToRoute()">${t('addToRoute')}</button><button type="button" onclick="addExternalSearchResultToMap()">${t('addToMap')}</button></div></div>`); infoWindow.open(map, externalSearchMarker); }; externalSearchMarker = new google.maps.Marker({ map, position:point, title:[name, address].filter(Boolean).join('\n'), icon:{ path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); externalSearchMarker.addListener('click', openInfo); map.panTo(point); map.setZoom(14); openInfo(); document.querySelector('#status').textContent = `${language === 'ru' ? 'Найдена локация' : 'Location found'}: ${name}`; }
+    function showExternalSearchResult({ name, position, address = '', mapsUri = '' }) { const lat = typeof position.lat === 'function' ? position.lat() : position.lat; const lng = typeof position.lng === 'function' ? position.lng() : position.lng; const point = { lat:Number(lat), lng:Number(lng) }; if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) throw new Error('Google не вернул координаты места.'); clearExternalSearchMarker(); externalSearchResult = { ...point, name, address, mapsUri, routeLabel:name === 'Coordinates' ? `${point.lat}, ${point.lng}` : name }; const openInfo = () => { const link = mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5"><strong>${escapeHtml(name)}</strong>${address ? `<br>${escapeHtml(address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addExternalSearchResultToRoute()">${t('addToRoute')}</button><button type="button" onclick="addExternalSearchResultToMap()">${t('addToMap')}</button></div></div>`); infoWindow.open(map, externalSearchMarker); }; externalSearchMarker = new google.maps.Marker({ map, position:point, title:[name, address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); externalSearchMarker.addListener('click', openInfo); map.panTo(point); map.setZoom(14); openInfo(); document.querySelector('#status').textContent = `${language === 'ru' ? 'Найдена локация' : 'Location found'}: ${name}`; }
     function showAddedLocationInfo(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker || location.hidden) return; const link = location.mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5"><strong>${escapeHtml(location.name)}</strong>${location.address ? `<br>${escapeHtml(location.address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addAddedLocationToRoute(${index})">${t('addToRoute')}</button><button type="button" onclick="showAddedLocationOnMap(${index})">${t('addToMap')}</button><button type="button" class="map-card-hide" onclick="hideAddedLocation(${index})">${t('hideButton')}</button></div></div>`); infoWindow.open(map, marker); }
     function showAddedLocationOnMap(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = false; marker.setMap(map); map.panTo({ lat:location.lat, lng:location.lng }); document.querySelector('#status').textContent = `${location.name} показана на карте.`; }
     function hideAddedLocation(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = true; marker.setMap(null); infoWindow.close(); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
-    function addExternalSearchResultToMap() { if (!externalSearchResult) return false; const existingIndex = addedLocations.findIndex(location => Math.abs(location.lat - externalSearchResult.lat) < 0.000001 && Math.abs(location.lng - externalSearchResult.lng) < 0.000001); if (existingIndex >= 0) { clearExternalSearchMarker(); addedLocations[existingIndex].hidden = false; addedMarkers[existingIndex].setMap(map); showAddedLocationInfo(existingIndex); document.querySelector('#status').textContent = `${addedLocations[existingIndex].name} уже добавлена на карту.`; return true; } const location = { ...externalSearchResult, hidden:false }; const index = addedLocations.push(location) - 1; const marker = new google.maps.Marker({ map, position:{ lat:location.lat, lng:location.lng }, title:[location.name, location.address].filter(Boolean).join('\n'), icon:{ path:'M0-48c-10 0-18 8-18 18 0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z', fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); marker.addListener('click', () => showAddedLocationInfo(index)); addedMarkers.push(marker); clearExternalSearchMarker(); showAddedLocationInfo(index); document.querySelector('#status').textContent = `${location.name} добавлена на карту.`; return true; }
+    function addExternalSearchResultToMap() { if (!externalSearchResult) return false; const existingIndex = addedLocations.findIndex(location => Math.abs(location.lat - externalSearchResult.lat) < 0.000001 && Math.abs(location.lng - externalSearchResult.lng) < 0.000001); if (existingIndex >= 0) { clearExternalSearchMarker(); addedLocations[existingIndex].hidden = false; addedMarkers[existingIndex].setMap(map); showAddedLocationInfo(existingIndex); document.querySelector('#status').textContent = `${addedLocations[existingIndex].name} уже добавлена на карту.`; return true; } const location = { ...externalSearchResult, hidden:false }; const index = addedLocations.push(location) - 1; const marker = new google.maps.Marker({ map, position:{ lat:location.lat, lng:location.lng }, title:[location.name, location.address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); marker.addListener('click', () => showAddedLocationInfo(index)); addedMarkers.push(marker); clearExternalSearchMarker(); showAddedLocationInfo(index); document.querySelector('#status').textContent = `${location.name} добавлена на карту.`; return true; }
     async function addCurrentSearchToMap() { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = 'Введите адрес, название или координаты.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => !location.hidden && location.name.toLowerCase() === lowerQuery); const localIndex = exactIndex >= 0 ? exactIndex : locations.findIndex(location => !location.hidden && `${location.name} ${location.note}`.toLowerCase().includes(lowerQuery)); if (localIndex >= 0) { map.panTo({ lat:locations[localIndex].lat, lng:locations[localIndex].lng }); map.setZoom(13); focusLocation(localIndex); document.querySelector('#status').textContent = `${locations[localIndex].name} уже находится на карте.`; return; } clearExternalSearchMarker(); await focusSearchLocation(); addExternalSearchResultToMap(); }
     async function focusSearchLocation() { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = 'Введите название, адрес или координаты.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => !location.hidden && location.name.toLowerCase() === lowerQuery); const matchIndex = exactIndex >= 0 ? exactIndex : locations.findIndex(location => !location.hidden && `${location.name} ${location.note}`.toLowerCase().includes(lowerQuery)); if (matchIndex >= 0) { clearExternalSearchMarker(); map.panTo({ lat:locations[matchIndex].lat, lng:locations[matchIndex].lng }); map.setZoom(13); focusLocation(matchIndex); return; } const coordinates = coordinatesFromQuery(query); if (coordinates) { showExternalSearchResult({ name:'Coordinates', position:coordinates, address:`${coordinates.lat}, ${coordinates.lng}` }); return; } document.querySelector('#status').textContent = 'Ищу локацию в Google Maps…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchByText({ textQuery:query, fields:['displayName','location','formattedAddress','googleMapsURI'], locationBias:map.getCenter(), maxResultCount:1 }); const place = places?.[0]; if (!place?.location) { document.querySelector('#status').textContent = 'Локация не найдена.'; return; } showExternalSearchResult({ name:place.displayName || query, position:place.location, address:place.formattedAddress || '', mapsUri:place.googleMapsURI || '' }); } catch (error) { console.error(error); document.querySelector('#status').textContent = `Не удалось найти локацию: ${error.message || 'проверьте Places API (New)'}`; } }
     function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
@@ -357,6 +441,7 @@ const nameI = find(['name','название','локация','место','lin
       document.head.appendChild(script);
       setTimeout(() => { if (!map) document.querySelector('#status').textContent = 'Карта не запустилась. Проверьте Maps JavaScript API, billing и ограничения API key.'; }, 8000);
     }
+    updateLegendShapes();
     applyLanguage();
     loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = language === 'ru' ? 'Таблица недоступна — показан пример' : 'Sheet is unavailable — showing an example'; renderList(); loadMapsScript(); });
   </script>
