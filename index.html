@@ -108,6 +108,9 @@
     .map-card-actions button { border:0; border-radius:7px; background:#167c71; color:#fff; padding:7px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
     .map-card-actions .map-card-hide { border:1px solid #d4dfdd; background:#f3f7f6; color:#5f7277; }
     .map-card-actions .map-card-hide:hover { border-color:#efb2ad; background:#fde8e7; color:#b42318; }
+    .warehouse-options { display:grid; gap:7px; margin-top:10px; }
+    .warehouse-options button { padding:9px; border:1px solid #9bcfc3; border-radius:7px; background:#eef8f5; color:var(--accent); text-align:left; font:inherit; cursor:pointer; }
+    .warehouse-options small { display:block; margin-top:3px; color:var(--muted); }
     .map-card-actions .map-card-hotel { width:32px; padding:7px 0; background:#eef8f5; color:#0f766e; border:1px solid #9bcfc3; font-size:15px; }
     .market-line { display:inline-flex; flex-wrap:wrap; align-items:center; gap:5px; margin:2px 0; }
     .market-line b { font-size:12px; color:#4b5f63; }
@@ -417,15 +420,68 @@ const nameI = find(['name','название','локация','место','lin
     function clearBuiltRoute() { document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
     function routePointFromInput(input) { const local = locations.find(location => location.name === input.value.trim()); if (local) return { lat:local.lat, lng:local.lng }; const lat = Number(input.dataset.routeLat); const lng = Number(input.dataset.routeLng); return input.value.trim() && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null; }
     function selectedRoutePoints() { return [...document.querySelectorAll('[data-route-point]')].map(routePointFromInput).filter(Boolean); }
+    function buildWarehouseRoute(siteIndex, warehouseIndex) {
+      const site = locations[siteIndex], warehouse = locations[warehouseIndex];
+      if (!site || !warehouse || siteIndex === warehouseIndex || !marketKey(site) || marketKey(site) !== marketKey(warehouse) || String(warehouse.locationType || '').trim().toUpperCase() !== 'WH') return;
+      clearBuiltRoute();
+      document.querySelectorAll('.route-point-row').forEach((row, rowIndex) => { if (rowIndex > 1) row.remove(); });
+      const inputs = [...document.querySelectorAll('[data-route-point]')];
+      [site, warehouse].forEach((location, index) => {
+        inputs[index].value = location.name;
+        inputs[index].dataset.routeLat = location.lat;
+        inputs[index].dataset.routeLng = location.lng;
+      });
+      routeSelection = new Set([siteIndex, warehouseIndex]);
+      renderList(document.querySelector('#search').value);
+      infoWindow.close();
+      document.querySelector('#routeResult').textContent = language === 'ru' ? 'Рассчитываю маршрут до склада…' : 'Calculating route to warehouse…';
+      document.querySelector('.route').scrollIntoView({ behavior:'smooth', block:'nearest' });
+      buildRouteOnMap();
+    }
+    function routeToWarehouse(index) {
+      const site = locations[index];
+      if (!site) return;
+      const warehouses = locations.map((location, warehouseIndex) => ({ location, warehouseIndex })).filter(item => item.warehouseIndex !== index && marketKey(site) && marketKey(item.location) === marketKey(site) && String(item.location.locationType || '').trim().toUpperCase() === 'WH');
+      if (!warehouses.length) {
+        document.querySelector('#status').textContent = language === 'ru' ? 'В таблице не найден склад с таким же маркетом.' : 'No warehouse with the same market was found in the sheet.';
+        return;
+      }
+      if (warehouses.length === 1) { buildWarehouseRoute(index, warehouses[0].warehouseIndex); return; }
+      infoWindow.setContent(`<div class="external-search-card"><strong>${language === 'ru' ? 'Выберите склад' : 'Choose warehouse'}</strong><div class="warehouse-options">${warehouses.map(item => `<button type="button" onclick="buildWarehouseRoute(${index},${item.warehouseIndex})">${escapeHtml(item.location.name)}${item.location.address ? `<small>${escapeHtml(item.location.address)}</small>` : ''}</button>`).join('')}</div></div>`);
+      infoWindow.open(map, markers[index]);
+    }
+    async function routeToIntekOffice(index) {
+      const location = locations[index];
+      if (!location) return;
+      try {
+        const office = locations.find(item => item.name.trim().toLowerCase() === 'intek office warehouse');
+        const point = office || (await new google.maps.Geocoder().geocode({ address:'4780 Western Ave, Knoxville, TN 37921' })).results[0]?.geometry.location;
+        if (!point) throw new Error('INTEK office not found');
+        clearBuiltRoute();
+        document.querySelectorAll('.route-point-row').forEach((row, rowIndex) => { if (rowIndex > 1) row.remove(); });
+        const inputs = [...document.querySelectorAll('[data-route-point]')];
+        inputs.forEach(input => { input.value = ''; delete input.dataset.routeLat; delete input.dataset.routeLng; });
+        inputs[0].value = location.name;
+        inputs[1].value = 'INTEK Office Warehouse';
+        inputs[1].dataset.routeLat = typeof point.lat === 'function' ? point.lat() : point.lat;
+        inputs[1].dataset.routeLng = typeof point.lng === 'function' ? point.lng() : point.lng;
+        routeSelection = new Set([index, ...(office ? [locations.indexOf(office)] : [])]);
+        renderList(document.querySelector('#search').value);
+        infoWindow.close();
+        document.querySelector('#routeResult').textContent = language === 'ru' ? 'Рассчитываю дорогу до офиса INTEK…' : 'Calculating drive to INTEK office…';
+        document.querySelector('.route').scrollIntoView({ behavior:'smooth', block:'nearest' });
+        buildRouteOnMap();
+      } catch (error) { document.querySelector('#routeResult').textContent = `${language === 'ru' ? 'Ошибка маршрута' : 'Route error'}: ${error.message}`; }
+    }
     function openRouteInGoogleMaps() { const points = selectedRoutePoints(); if (points.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } window.open(`https://www.google.com/maps/dir/${points.map(point => `${point.lat},${point.lng}`).join('/')}`, '_blank'); }
-    function buildRouteOnMap() { const routeResult = document.querySelector('#routeResult'); const points = selectedRoutePoints(); if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } directionsService.route({ origin:points[0], destination:points.at(-1), waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>DRIVING TIME</small><strong>${formatDuration(seconds)}</strong></span>`; }).catch(error => { console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
+    function buildRouteOnMap() { const routeResult = document.querySelector('#routeResult'); const points = selectedRoutePoints(); if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } directionsService.route({ origin:points[0], destination:points.at(-1), waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { directionsRenderer.setDirections(result); const distance = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.distance?.value || 0), 0); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, { maximumFractionDigits:1 }).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small></span>`; }).catch(error => { console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; }); }
     function addLocationToRoute(index) { const location = locations[index]; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = location.name; target.dispatchEvent(new Event('input', { bubbles:true })); document.querySelector('#routeResult').textContent = `${location.name} added to route.`; }
     function hideLocation(index) { const location = locations[index]; if (!location) return; location.hidden = true; infoWindow.close(); renderList(document.querySelector('#search').value); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
     function addRoutePoint(point) { if (!point) return; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = point.routeLabel; target.dispatchEvent(new Event('input', { bubbles:true })); target.dataset.routeLat = point.lat; target.dataset.routeLng = point.lng; document.querySelector('#routeResult').textContent = `${point.routeLabel} added to route.`; }
     function addExternalSearchResultToRoute() { addRoutePoint(externalSearchResult); }
     function addAddedLocationToRoute(index) { addRoutePoint(addedLocations[index]); }
     async function findHotelsNearLocation(location) { hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } }
-    function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button><button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button></div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
+    function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button><button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button></div><div class="map-card-actions"><button type="button" onclick="routeToIntekOffice(${index})">Intek</button>${String(x.locationType || '').trim().toUpperCase() !== 'WH' ? `<button type="button" onclick="routeToWarehouse(${index})">WH</button>` : ''}</div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
     function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function coordinatesFromQuery(query) { const match = String(query).trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/); if (!match) return null; const lat = Number(match[1]); const lng = Number(match[2]); return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; }
