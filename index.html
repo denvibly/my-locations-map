@@ -50,7 +50,7 @@
     .location-toggles { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
     .location-toggle { display:flex; gap:9px; align-items:center; padding:8px 10px; border-radius:9px; background:#f7faf9; font-size:13px; cursor:pointer; }
     .location-toggle input { width:17px; height:17px; accent-color:var(--accent); }
-    .active-toggle-row { justify-content:space-between; flex-wrap:nowrap; }
+    .active-toggle-row { justify-content:space-between; flex-wrap:wrap; row-gap:7px; }
     .active-toggle-main, .active-hide-options, .active-hide-option { display:flex; align-items:center; }
     .active-toggle-main { gap:6px; cursor:pointer; font-size:10px; white-space:nowrap; }
     .active-hide-options { gap:3px; margin-left:auto; color:var(--ink); font-size:8px; font-weight:700; }
@@ -61,7 +61,11 @@
     .map-location-label { position:absolute; max-width:190px; padding:3px 6px; border:1px solid rgba(16,33,43,.18); border-radius:5px; background:rgba(255,255,255,.92); box-shadow:0 2px 7px rgba(15,23,42,.16); color:var(--ink); font-size:10px; line-height:1.25; white-space:pre; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%, -100%); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
     .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
-    .legend span { white-space:nowrap; }
+    .legend { align-items:center; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; line-height:20px; }
+    .legend > b { line-height:20px; }
+    .legend .legend-icon { display:flex !important; align-items:center; justify-content:center; flex:0 0 20px; width:20px !important; height:24px !important; margin:0 !important; }
+    .legend .legend-icon svg { display:block; width:20px; height:24px; overflow:visible; }
     .legend b { color:var(--ink); }
     .legend-icon { display:inline-block; width:12px; height:12px; margin-right:4px; border:2px solid #fff; border-radius:50% 50% 50% 0; box-shadow:0 0 0 1px #84949a; transform:rotate(-45deg); vertical-align:-2px; }
     .legend-red { background:#7c3aed; }
@@ -71,7 +75,9 @@
     .legend-black { background:#111827; }
     .legend-lime { background:#9bdc28; }
     .legend-added { background:#0f766e; }
-    .market-legend { display:grid; gap:6px; margin-top:12px; font-size:11px; color:var(--ink); }
+    .market-legend { display:grid; gap:8px; margin-top:18px; padding:14px 12px; border:1px solid #d6e5e1; border-radius:12px; background:#f0f7f5; font-size:11px; color:var(--ink); }
+    .market-legend > b { padding-bottom:7px; margin-bottom:2px; border-bottom:1px solid #d6e5e1; color:var(--accent); }
+    .market-legend:not(:empty) + .route { margin-top:22px; padding-top:18px; border-top:2px solid #c9dcd6; }
     .market-legend:empty { display:none; }
     .market-legend span { display:flex; align-items:center; gap:7px; overflow-wrap:anywhere; }
     .market-legend i { width:12px; height:12px; flex:0 0 12px; border-radius:50%; }
@@ -136,12 +142,12 @@
       <div class="location-toggles">
         <label class="location-toggle"><input id="showLabelsToggle" type="checkbox"> <span data-i18n="showLabels">Показать ярлыки</span></label>
         <label class="location-toggle"><input id="showCrewsToggle" type="checkbox"> <span data-i18n="showCrews">Показать бригадиров</span></label>
-        <div class="location-toggle active-toggle-row"><label class="active-toggle-main"><input id="activeLocationsToggle" type="checkbox"> <span data-i18n="activeLocations">Активные</span></label><div class="active-hide-options"><span class="active-hide-label" data-i18n="hide">Скрыть:</span><label class="active-hide-option"><input id="hideActiveNotStartedToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label><label class="active-hide-option"><input id="hideActiveWhToggle" type="checkbox"> <span data-i18n="warehouses">Склады</span></label><label class="active-hide-option"><input id="hideActiveIphToggle" type="checkbox"> <span data-i18n="issues">Проблемные</span></label></div></div>
+        <div class="location-toggle active-toggle-row"><label class="active-toggle-main"><input id="activeLocationsToggle" type="checkbox"> <span data-i18n="activeLocations">Активные</span></label><div class="active-hide-options"><span class="active-hide-label" data-i18n="hide">Скрыть:</span><label class="active-hide-option"><input id="hideActiveSitesToggle" type="checkbox"> <span data-i18n="active">Активные</span></label><label class="active-hide-option"><input id="hideActiveNotStartedToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label><label class="active-hide-option"><input id="hideActiveWhToggle" type="checkbox"> <span data-i18n="warehouses">Склады</span></label><label class="active-hide-option"><input id="hideActiveIphToggle" type="checkbox"> <span data-i18n="issues">Проблемные</span></label></div></div>
         <label class="location-toggle"><input id="notStartedLocationsToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label>
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox"> <span data-i18n="showAll">Показать все локации</span></label>
       </div>
+      <div id="marketLegend" class="market-legend"></div>
       <div class="route">
-        <div id="marketLegend" class="market-legend"></div>
         <div class="route-heading"><h3 data-i18n="route">Маршрут</h3><button id="clearBuiltRoute" class="clear-built-route" type="button" title="Очистить построенный маршрут" aria-label="Очистить построенный маршрут">⌫</button></div>
         <div id="routePoints"></div>
         <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute" data-i18n="buildRoute">Построить маршрут</button></div>
@@ -270,6 +276,7 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#hideActiveNotStartedToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#hideActiveWhToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#hideActiveIphToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
+      document.querySelector('#hideActiveSitesToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#notStartedLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#showAllLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#notStartedLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       const routePoints = document.querySelector('#routePoints');
@@ -292,6 +299,7 @@ const nameI = find(['name','название','локация','место','lin
       const hideActiveNotStarted = document.querySelector('#hideActiveNotStartedToggle')?.checked ?? false;
       const hideActiveWh = document.querySelector('#hideActiveWhToggle')?.checked ?? false;
       const hideActiveIph = document.querySelector('#hideActiveIphToggle')?.checked ?? false;
+      const hideActiveSites = document.querySelector('#hideActiveSitesToggle')?.checked ?? false;
       const notStartedOnly = document.querySelector('#notStartedLocationsToggle')?.checked ?? false;
       const hasSearchQuery = Boolean(query.trim());
       const startAfter = dateNumber(document.querySelector('#startAfterDate')?.value);
@@ -302,7 +310,7 @@ const nameI = find(['name','название','локация','место','lin
       const filterMatches = availableLocations.filter(matchesFilters);
       const searchResults = hasSearchQuery ? availableLocations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
       const searchMatches = searchResults.filter(matchesFilters);
-      const activeMatches = availableLocations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveNotStarted || !isNotStarted) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && matchesFilters(location); });
+      const activeMatches = availableLocations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); const isActiveSite = !isWh && !isNotStarted && !isIph && !statusText.includes('completed'); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveSites || !isActiveSite) && (!hideActiveNotStarted || !isNotStarted) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && matchesFilters(location); });
       const notStartedMatches = availableLocations.filter(location => location.cxStatus.toLowerCase().includes('not started') && matchesFilters(location));
       const searchedLocation = searchResults.find(location => location.name.toLowerCase() === query.trim().toLowerCase()) || searchResults[0] || null;
       const modeMatches = activeOnly ? activeMatches : notStartedOnly ? notStartedMatches : showAll || hasSelectedFilters ? filterMatches : [];
@@ -334,7 +342,8 @@ const nameI = find(['name','название','локация','место','lin
         const icon = document.querySelector(`.legend-${className}`);
         const color = getComputedStyle(icon).backgroundColor;
         icon.style.cssText = 'display:inline-block;width:18px;height:20px;margin-right:4px;border:0;border-radius:0;box-shadow:none;transform:none;vertical-align:middle;background:transparent';
-        icon.innerHTML = `<svg viewBox="-29 -52 58 56" width="18" height="20" aria-hidden="true"><path d="${markerShapes[category]}" fill="${color}" stroke="#ffffff" stroke-width="3"/></svg>`;
+        const bounds = category === 'completed' || category === 'paused' ? '-29 -48 58 56' : category === 'notStarted' ? '-29 -49 58 56' : '-29 -52 58 56';
+        icon.innerHTML = `<svg viewBox="${bounds}" width="20" height="24" aria-hidden="true"><path d="${markerShapes[category]}" fill="${color}" stroke="#ffffff" stroke-width="3"/></svg>`;
       });
     }
     const marketColors = new Map();
@@ -359,7 +368,7 @@ const nameI = find(['name','название','локация','место','lin
           const firstRgb = channels(first), secondRgb = channels(second);
           return firstRgb.reduce((sum, value, index) => sum + [0.3, 0.59, 0.11][index] * (value - secondRgb[index]) ** 2, 0);
         };
-        const markets = [...new Set(locations.filter(usesMarketColor).map(marketKey))].sort();
+        const markets = [...new Set([...locations.filter(usesMarketColor), ...locations.filter(usesMarketBorder)].map(marketKey))].sort();
         markets.forEach(market => {
           if (marketColors.has(market)) return;
           if (!candidates.length) {
@@ -383,9 +392,13 @@ const nameI = find(['name','название','локация','место','lin
       const active = String(location.active || '').replace(/\s+/g, ' ').toLowerCase().includes('active locations');
       return Boolean(marketKey(location)) && (warehouse || active) && !/not started|pending|on[ -]?hold|issue/.test(status);
     }
+    function usesMarketBorder(location) {
+      const status = `${location.status || ''} ${location.cxStatus || ''}`.toLowerCase();
+      return Boolean(marketKey(location)) && /not started|pending|on[ -]?hold|issue/.test(status);
+    }
     function renderMarketLegend(visible) {
-      const markets = [...new Map(visible.filter(usesMarketColor).map(location => [marketKey(location), location])).values()].sort((first, second) => marketKey(first).localeCompare(marketKey(second)));
-      document.querySelector('#marketLegend').innerHTML = markets.length ? `<b>${language === 'ru' ? 'Цвета маркетов · ◆ склад, ● проект' : 'Market colors · ◆ warehouse, ● project'}</b>${markets.map(location => `<span><i style="background:${marketColor(location)}"></i>${escapeHtml(location.marketState)}</span>`).join('')}` : '';
+      const markets = [...new Map(visible.filter(location => usesMarketColor(location) || usesMarketBorder(location)).map(location => [marketKey(location), location])).values()].sort((first, second) => marketKey(first).localeCompare(marketKey(second)));
+      document.querySelector('#marketLegend').innerHTML = markets.length ? `<b>${language === 'ru' ? 'Цвета маркетов' : 'Market colors'}</b>${markets.map(location => `<span><i style="background:${marketColor(location)}"></i>${escapeHtml(location.marketState)}</span>`).join('')}` : '';
       document.querySelector('.legend-lime path')?.setAttribute('fill', '#64748b');
       document.querySelector('.legend-blue path')?.setAttribute('fill', '#64748b');
     }
@@ -396,7 +409,8 @@ const nameI = find(['name','название','локация','место','lin
       const isWh = String(location.locationType || '').trim().toUpperCase() === 'WH';
       const color = usesMarketColor(location) ? marketColor(location) : cxStatus.includes('not started') ? '#111827' : /pending|on[ -]?hold/.test(`${status} ${cxStatus}`) ? '#ef3f35' : /issue/.test(`${status} ${cxStatus}`) ? '#f2b01e' : isWh ? '#2563eb' : active ? '#9bdc28' : status && !status.includes('completed') ? '#f2b01e' : '#7c3aed';
       const category = isWh ? 'warehouse' : color === '#111827' ? 'notStarted' : color === '#ef3f35' ? 'paused' : color === '#f2b01e' ? 'issue' : active ? 'active' : 'completed';
-      return { path:markerShapes[category], fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
+      const borderColor = usesMarketBorder(location) || (category === 'issue' && marketKey(location)) ? marketColor(location) : null;
+      return { path:markerShapes[category], fillColor:color, fillOpacity:1, strokeColor:borderColor || '#ffffff', strokeWeight:borderColor ? 5 : 2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
     }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
     function routeLetter(index) { return String.fromCharCode(65 + index); }
