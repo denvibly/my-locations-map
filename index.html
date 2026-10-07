@@ -30,6 +30,10 @@
     .search-suggestions.visible { display:block; }
     .search-suggestion { padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; }
     .search-suggestion:hover { background:var(--soft); color:var(--accent); }
+    .search-suggestion small { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
+    .route-point-row { position:relative; }
+    .route-suggestions { position:absolute; top:100%; left:0; right:0; z-index:30; margin:-4px 0 0; max-height:250px; overflow:auto; }
+    .search-suggestion.suggestion-selected { background:var(--soft); color:var(--accent); }
     .search-row { display:flex; gap:7px; align-items:stretch; }
     .search-row .search { flex:1; min-width:0; }
     .search-focus { width:42px; flex:0 0 42px; border:1px solid #9bcfc3; border-radius:10px; background:#f0faf7; color:var(--accent); font-size:19px; cursor:pointer; box-shadow:0 4px 10px rgba(15,118,110,.1); }
@@ -63,6 +67,13 @@
     .map-location-label-layer { position:absolute; inset:0; pointer-events:none; }
     .map-location-label { position:absolute; max-width:190px; padding:3px 6px; border:1px solid rgba(16,33,43,.18); border-radius:5px; background:rgba(255,255,255,.92); box-shadow:0 2px 7px rgba(15,23,42,.16); color:var(--ink); font-size:10px; line-height:1.25; white-space:pre; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%, -100%); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
+    .filters-section { margin-top:24px; padding:16px 12px 12px; border:1px solid #dce6e8; border-radius:14px; background:#f2f6f7; }
+    .section-heading { display:flex; align-items:center; gap:10px; margin:0 0 14px; color:#4b656b; font-size:13px; font-weight:800; }
+    .section-heading::after { content:''; flex:1; height:1px; background:#d4e1e3; }
+    .filters-section .filters { margin-top:0; }
+    .filters-section .filter-button, .filters-section .date-filter { border-color:#e1e9eb; background:#fff; box-shadow:0 2px 5px rgba(15,23,42,.03); }
+    .results-section { margin-top:26px; padding-top:18px; border-top:1px solid #cddfdb; }
+    .results-section .place { border-color:#dce6e3; box-shadow:0 4px 12px rgba(15,23,42,.05); }
     .legend { position:fixed; z-index:20; right:0; bottom:0; left:360px; display:flex; justify-content:center; gap:18px; padding:8px 14px; border-top:1px solid var(--line); background:#fff; color:var(--muted); font-size:12px; box-shadow:0 -3px 12px #153b3810; }
     .legend { align-items:center; }
     .legend span { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; line-height:20px; }
@@ -94,7 +105,7 @@
     .route-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin-top:7px; }
     .route-actions .secondary { background:#eaf2f0; color:var(--accent); }
     .route-result { margin-top:9px; color:var(--muted); font-size:12px; line-height:1.4; }
-    .route-result.has-time { display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid #9bcfc3; border-radius:10px; background:linear-gradient(135deg, #effaf7, #dff3ed); color:#0f766e; box-shadow:0 8px 18px rgba(15,118,110,.12); }
+    .route-result.has-time, .route-result:has(.route-time-icon) { display:flex; align-items:center; gap:12px; margin-top:14px; padding:16px 14px; border:1px solid #9bcfc3; border-left:4px solid var(--accent); border-radius:12px; background:linear-gradient(135deg, #effaf7, #dff3ed); color:#0f766e; box-shadow:0 5px 14px rgba(15,118,110,.08); }
     .route-time-icon { display:grid; width:30px; height:30px; flex:0 0 30px; place-items:center; border-radius:50%; background:#167c71; color:#fff; font-size:15px; box-shadow:0 3px 7px rgba(15,118,110,.28); }
     .route-result small { display:block; margin-bottom:1px; color:#4e726c; font-size:11px; font-weight:700; letter-spacing:.02em; }
     .route-result strong { display:block; color:#0b5e56; font-size:17px; line-height:1.15; }
@@ -157,10 +168,15 @@
         <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute" data-i18n="buildRoute">Построить маршрут</button></div>
         <div id="routeResult" class="route-result" data-i18n="routeHint">Выберите точки по порядку посещения.</div>
       </div>
-      <h2 class="filters-title" data-i18n="filters">Фильтры</h2>
-      <div id="filters" class="filters"></div>
+      <section class="filters-section" aria-labelledby="filtersHeading">
+        <h2 id="filtersHeading" class="filters-title section-heading" data-i18n="filters">Фильтры</h2>
+        <div id="filters" class="filters"></div>
+      </section>
       <div class="summary"><span id="status">Загрузка локаций…</span><span id="count" class="badge">0</span></div>
-      <section id="places" class="places"></section>
+      <section class="results-section" aria-labelledby="locationsHeading">
+        <h2 id="locationsHeading" class="section-heading" data-i18n="locationsHeading">Локации</h2>
+        <div id="places" class="places"></div>
+      </section>
       <div class="status" data-i18n="dataRefreshNote">Данные обновляются при каждом открытии страницы.</div>
     </aside>
     <div id="map"></div>
@@ -174,8 +190,8 @@
       sheetCsvUrl: 'https://docs.google.com/spreadsheets/d/1lVcZV4bHwlVEJVNOXTv2WStc6QXfCPocy71v8YSM9C0/export?format=csv&gid=1292317977'
     };
     const translations = {
-      ru: { searchPlaceholder:'Поиск сайта, адреса или координат…', addToMap:'Добавить на карту', filters:'Фильтры', showLabels:'Показать ярлыки', showCrews:'Показать бригадиров', activeLocations:'Активные', hide:'Скрыть:', notStarted:'Не начато', warehouses:'Склады', issues:'Проблемные', showAll:'Показать все локации', route:'Маршрут', buildRoute:'Построить маршрут', routeHint:'Выберите точки по порядку посещения.', dataRefreshNote:'Данные обновляются при каждом открытии страницы.', projects:'Проекты:', completed:'Завершено', pending:'На паузе', active:'Активно', added:'Добавлено', status:'Статус', locationType:'Тип локации', crewLead:'Бригадир', marketState:'Рынок/оператор', custom:'Другое', project:'Проект #', startAfter:'Старт после', filterSearch:'Поиск', routePoint:'Точка маршрута', addMore:'+ Ещё', addToRoute:'Добавить в маршрут', openMaps:'Открыть в Google Maps', hideButton:'Скрыть', address:'Адрес', week:'Неделя', drivingTime:'Время в пути', noResults:'Ничего не найдено.', clearRoute:'Маршрут очищен с карты.' },
-      en: { searchPlaceholder:'Search site, address, or coordinates…', addToMap:'Add to map', filters:'Filters', showLabels:'Show Labels', showCrews:'Show Crews', activeLocations:'Active Locations', hide:'Hide:', notStarted:'Not Started', warehouses:'WH', issues:'I,P,H', showAll:'Show all locations', route:'Route', buildRoute:'Build route', routeHint:'Select points in visiting order.', dataRefreshNote:'Data refreshes every time the page opens.', projects:'Projects:', completed:'Completed', pending:'Pending / On-Hold', active:'Active', added:'Added', status:'Status', locationType:'Location Type', crewLead:'Crew Lead', marketState:'Market/Carrier States', custom:'Custom', project:'Project #', startAfter:'Start after', filterSearch:'Search', routePoint:'Route point', addMore:'+ Add more', addToRoute:'Add to route', openMaps:'Open in Google Maps', hideButton:'Hide', address:'Address', week:'Week', drivingTime:'Driving time', noResults:'No locations found.', clearRoute:'Route cleared from the map.' }
+      ru: { locationsHeading:'Локации', searchPlaceholder:'Поиск сайта, адреса или координат…', addToMap:'Добавить на карту', filters:'Фильтры', showLabels:'Показать ярлыки', showCrews:'Показать бригадиров', activeLocations:'Активные', hide:'Скрыть:', notStarted:'Не начато', warehouses:'Склады', issues:'Проблемные', showAll:'Показать все локации', route:'Маршрут', buildRoute:'Построить маршрут', routeHint:'Выберите точки по порядку посещения.', dataRefreshNote:'Данные обновляются при каждом открытии страницы.', projects:'Проекты:', completed:'Завершено', pending:'На паузе', active:'Активно', added:'Добавлено', status:'Статус', locationType:'Тип локации', crewLead:'Бригадир', marketState:'Рынок/оператор', custom:'Другое', project:'Проект #', startAfter:'Старт после', filterSearch:'Поиск', routePoint:'Точка маршрута', addMore:'+ Ещё', addToRoute:'Добавить в маршрут', openMaps:'Открыть в Google Maps', hideButton:'Скрыть', address:'Адрес', week:'Неделя', drivingTime:'Время в пути', noResults:'Ничего не найдено.', clearRoute:'Маршрут очищен с карты.' },
+      en: { locationsHeading:'Locations', searchPlaceholder:'Search site, address, or coordinates…', addToMap:'Add to map', filters:'Filters', showLabels:'Show Labels', showCrews:'Show Crews', activeLocations:'Active Locations', hide:'Hide:', notStarted:'Not Started', warehouses:'WH', issues:'I,P,H', showAll:'Show all locations', route:'Route', buildRoute:'Build route', routeHint:'Select points in visiting order.', dataRefreshNote:'Data refreshes every time the page opens.', projects:'Projects:', completed:'Completed', pending:'Pending / On-Hold', active:'Active', added:'Added', status:'Status', locationType:'Location Type', crewLead:'Crew Lead', marketState:'Market/Carrier States', custom:'Custom', project:'Project #', startAfter:'Start after', filterSearch:'Search', routePoint:'Route point', addMore:'+ Add more', addToRoute:'Add to route', openMaps:'Open in Google Maps', hideButton:'Hide', address:'Address', week:'Week', drivingTime:'Driving time', noResults:'No locations found.', clearRoute:'Route cleared from the map.' }
     };
     let language = ['ru', 'en'].includes(localStorage.getItem('locations-map-language')) ? localStorage.getItem('locations-map-language') : 'ru';
     const t = key => translations[language][key] || key;
@@ -234,6 +250,7 @@
     return new LocationLabelsOverlay(mapInstance, items); }
 
     function parseCsv(text) {
+      text = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
       const rows = [], re = /("(?:[^"]|"")*"|[^,\n]*)(,|\n|$)/g; let row = [], match;
       while ((match = re.exec(text))) { let value = match[1]; if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1).replace(/""/g, '"'); row.push(value.trim()); if (match[2] === '\n') { rows.push(row); row = []; } if (!match[2]) break; }
       if (row.length && row.some(Boolean)) rows.push(row); return rows;
@@ -252,7 +269,7 @@ const nameI = find(['name','название','локация','место','lin
         const details = [projectI >= 0 && row[projectI], addressI >= 0 && row[addressI], statusI >= 0 && row[statusI], activeI >= 0 && row[activeI], noteI >= 0 && row[noteI]].filter(Boolean);
         const value = index => index >= 0 ? String(row[index] || '').trim() : '';
         const address = value(addressI), mapsLink = value(mapsI) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row[latI]},${row[lngI]}`)}`;
-        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), custom:value(customI), project:value(projectI), start:value(startI), week:value(weekI) };
+        return { name, lat: Number(String(row[latI >= 0 ? latI : 1]).replace(',', '.')), lng: Number(String(row[lngI >= 0 ? lngI : 2]).replace(',', '.')), note: details.join(' • '), address, mapsLink, hasAddress: addressI >= 0 && Boolean(address), sheetRow, status:value(statusI), cxStatus:value(cxStatusI), active:value(activeI), locationType:value(find(['locationtype','типлокации'])), crewLead:value(find(['crewlead','руководительбригады'])), marketState:value(find(['marketcarrierstates','market','carrierstates','штат'])), custom:value(customI), project:value(projectI), start:value(startI), week:value(weekI), primaryWh:value(exact('wh')), secondWh:value(exact('secondwh')) };
       }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
     }
 
@@ -298,6 +315,77 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
       document.querySelector('#clearBuiltRoute').addEventListener('click', () => { clearBuiltRoute(); document.querySelector('#routeResult').textContent = 'Маршрут очищен с карты.'; });
     }
+    function isActiveCrewProject(location) {
+      const status = `${location.cxStatus || ''} ${location.status || ''}`.toLowerCase();
+      return String(location.locationType || '').trim().toUpperCase() !== 'WH' && /\bactive\b/.test(status) && !/not started|completed|issue|pending|on[ -]?hold/.test(status);
+    }
+    function searchLocations(query, includeHidden = false) {
+      const value = String(query || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      if (!value) return [];
+      const normalize = text => String(text || '').replace(/\s+/g, ' ').toLowerCase();
+      const crewMatches = location => isActiveCrewProject(location) && normalize(location.crewLead).includes(value);
+      const rank = location => normalize(location.name).trim() === value ? 0 : crewMatches(location) ? 1 : 2;
+      return locations.filter(location => (includeHidden || !location.hidden) && (
+        normalize(`${location.name} ${location.note || ''} ${location.address || ''} ${location.project || ''}`).includes(value) || crewMatches(location)
+      )).sort((first, second) => rank(first) - rank(second));
+    }
+    function suggestionMarkup(location, attribute) {
+      return `<div class="search-suggestion" ${attribute}="${escapeHtml(location.name)}" role="option"><strong>${escapeHtml(location.name)}</strong>${location.crewLead ? `<small>${escapeHtml(location.crewLead)}${isActiveCrewProject(location) ? ` · ${t('active')}` : ''}</small>` : ''}</div>`;
+    }
+    function renderRouteSuggestions(input) {
+      document.querySelectorAll('.route-suggestions').forEach(node => node.remove());
+      input.removeAttribute('list');
+      const matches = searchLocations(input.value).slice(0, 8);
+      if (!input.value.trim() || locations.some(location => location.name === input.value.trim()) || !matches.length) return;
+      const suggestions = document.createElement('div');
+      suggestions.className = 'search-suggestions route-suggestions visible';
+      suggestions.setAttribute('role', 'listbox');
+      suggestions.innerHTML = matches.map(location => suggestionMarkup(location, 'data-route-suggestion')).join('');
+      suggestions.addEventListener('mousedown', event => event.preventDefault());
+      suggestions.addEventListener('click', event => {
+        const selected = event.target.closest('[data-route-suggestion]');
+        if (!selected) return;
+        input.value = selected.dataset.routeSuggestion;
+        input.dispatchEvent(new Event('input', { bubbles:true }));
+        input.focus();
+      });
+      input.closest('.route-point-row').appendChild(suggestions);
+    }
+    document.addEventListener('input', event => {
+      if (event.target.matches('[data-route-point]')) renderRouteSuggestions(event.target);
+    });
+    document.addEventListener('focusin', event => {
+      if (event.target.matches('[data-route-point]')) renderRouteSuggestions(event.target);
+      else if (!event.target.closest('.route-suggestions')) document.querySelectorAll('.route-suggestions').forEach(node => node.remove());
+    });
+    document.addEventListener('click', event => {
+      if (!event.target.closest('.route-point-row')) document.querySelectorAll('.route-suggestions').forEach(node => node.remove());
+    });
+    document.addEventListener('keydown', event => {
+      if (!event.target.matches('[data-route-point]')) return;
+      const suggestions = event.target.closest('.route-point-row').querySelector('.route-suggestions');
+      if (!suggestions) return;
+      const options = [...suggestions.querySelectorAll('[data-route-suggestion]')];
+      const current = options.findIndex(option => option.classList.contains('suggestion-selected'));
+      if (event.key === 'Escape') { suggestions.remove(); return; }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const next = current < 0 ? (event.key === 'ArrowDown' ? 0 : options.length - 1) : (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+        options.forEach((option, index) => { option.classList.toggle('suggestion-selected', index === next); option.setAttribute('aria-selected', index === next); });
+        options[next].scrollIntoView({ block:'nearest' });
+      } else if (event.key === 'Enter') { event.preventDefault(); options[current < 0 ? 0 : current].click(); }
+    });
+    function warehousesForSite(site) {
+      if (!site || String(site.locationType || '').trim().toUpperCase() === 'WH') return [];
+      const normalize = value => String(value || '').replace(/\((?:CT|ET|MT|PT)[^)]*\)/gi, '').toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
+      const warehouses = locations.filter(location => location !== site && String(location.locationType || '').trim().toUpperCase() === 'WH');
+      const assigned = [site.primaryWh, site.secondWh].map(normalize).filter(Boolean);
+      if (assigned.length) {
+        return [...new Set(assigned.map(reference => warehouses.find(warehouse => [warehouse.name, warehouse.address].some(value => normalize(value) === reference))).filter(Boolean))];
+      }
+      const sameMarket = warehouses.filter(warehouse => marketKey(site) && marketKey(warehouse) === marketKey(site));
+      return sameMarket.length === 1 ? sameMarket : [];
+    }
     function renderList(query = '') {
       const selected = Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)]));
       const showAll = document.querySelector('#showAllLocationsToggle')?.checked ?? true;
@@ -314,7 +402,7 @@ const nameI = find(['name','название','локация','место','lin
       const matchesFilters = location => filterFields.every(field => !selected[field.key].length || selected[field.key].includes(location[field.key])) && (!startAfter || (dateNumber(location.start) && dateNumber(location.start) > startAfter));
       const availableLocations = locations.filter(location => !location.hidden);
       const filterMatches = availableLocations.filter(matchesFilters);
-      const searchResults = hasSearchQuery ? availableLocations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
+      const searchResults = hasSearchQuery ? searchLocations(query) : [];
       const searchMatches = searchResults.filter(matchesFilters);
       const activeMatches = availableLocations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); const isActiveSite = !isWh && !isNotStarted && !isIph && !statusText.includes('completed'); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveSites || !isActiveSite) && (!hideActiveNotStarted || !isNotStarted) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && matchesFilters(location); });
       const notStartedMatches = availableLocations.filter(location => location.cxStatus.toLowerCase().includes('not started') && matchesFilters(location));
@@ -323,6 +411,11 @@ const nameI = find(['name','название','локация','место','lin
       const filtered = hasSearchQuery ? [...new Set([...modeMatches, ...searchMatches])] : modeMatches;
       const mapLocations = [...modeMatches, ...searchResults];
       const visible = new Set([...mapLocations, ...locations.filter(location => location.pinnedToMap && !location.hidden), ...(displayLocations ? [...routeSelection].map(index => locations[index]).filter(location => location && !location.hidden) : [])]);
+      if (!activeOnly || !hideActiveWh) {
+        [...visible].filter(location => String(location.primaryWh || location.secondWh || '').trim()).forEach(site => {
+          warehousesForSite(site).filter(warehouse => !warehouse.hidden).forEach(warehouse => visible.add(warehouse));
+        });
+      }
       const searchedIndex = searchedLocation ? locations.indexOf(searchedLocation) : -1;
       markers.forEach((marker, index) => { const highlighted = index === searchedIndex || index === highlightedRouteIndex; marker.setVisible(visible.has(locations[index])); marker.setIcon(markerIcon(locations[index], highlighted)); marker.setZIndex(index === searchedIndex ? 100000 : undefined); });
       if (locationLabels) locationLabels.setVisibleIndexes([...visible].map(location => locations.indexOf(location)).filter(index => index >= 0));
@@ -425,7 +518,7 @@ const nameI = find(['name','название','локация','место','lin
     function selectedRoutePoints() { return [...document.querySelectorAll('[data-route-point]')].map(routePointFromInput).filter(Boolean); }
     function buildWarehouseRoute(siteIndex, warehouseIndex) {
       const site = locations[siteIndex], warehouse = locations[warehouseIndex];
-      if (!site || !warehouse || siteIndex === warehouseIndex || !marketKey(site) || marketKey(site) !== marketKey(warehouse) || String(warehouse.locationType || '').trim().toUpperCase() !== 'WH') return;
+      if (!site || !warehouse || !warehousesForSite(site).includes(warehouse)) return;
       clearBuiltRoute();
       document.querySelectorAll('.route-point-row').forEach((row, rowIndex) => { if (rowIndex > 1) row.remove(); });
       const inputs = [...document.querySelectorAll('[data-route-point]')];
@@ -444,7 +537,7 @@ const nameI = find(['name','название','локация','место','lin
     function routeToWarehouse(index) {
       const site = locations[index];
       if (!site) return;
-      const warehouses = locations.map((location, warehouseIndex) => ({ location, warehouseIndex })).filter(item => item.warehouseIndex !== index && marketKey(site) && marketKey(item.location) === marketKey(site) && String(item.location.locationType || '').trim().toUpperCase() === 'WH');
+      const warehouses = warehousesForSite(site).map(location => ({ location, warehouseIndex:locations.indexOf(location) }));
       if (!warehouses.length) {
         document.querySelector('#status').textContent = language === 'ru' ? 'В таблице не найден склад с таким же маркетом.' : 'No warehouse with the same market was found in the sheet.';
         return;
@@ -494,9 +587,9 @@ const nameI = find(['name','название','локация','место','lin
     function showAddedLocationOnMap(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = false; marker.setMap(map); map.panTo({ lat:location.lat, lng:location.lng }); document.querySelector('#status').textContent = `${location.name} показана на карте.`; }
     function hideAddedLocation(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = true; marker.setMap(null); infoWindow.close(); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
     function addExternalSearchResultToMap() { if (!externalSearchResult) return false; const existingIndex = addedLocations.findIndex(location => Math.abs(location.lat - externalSearchResult.lat) < 0.000001 && Math.abs(location.lng - externalSearchResult.lng) < 0.000001); if (existingIndex >= 0) { clearExternalSearchMarker(); addedLocations[existingIndex].hidden = false; addedMarkers[existingIndex].setMap(map); showAddedLocationInfo(existingIndex); document.querySelector('#status').textContent = `${addedLocations[existingIndex].name} уже добавлена на карту.`; return true; } const location = { ...externalSearchResult, hidden:false }; const index = addedLocations.push(location) - 1; const marker = new google.maps.Marker({ map, position:{ lat:location.lat, lng:location.lng }, title:[location.name, location.address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); marker.addListener('click', () => showAddedLocationInfo(index)); addedMarkers.push(marker); clearExternalSearchMarker(); showAddedLocationInfo(index); document.querySelector('#status').textContent = `${location.name} добавлена на карту.`; return true; }
-    async function addCurrentSearchToMap() { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = language === 'ru' ? 'Введите адрес, название или координаты.' : 'Enter an address, name, or coordinates.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => location.name.toLowerCase() === lowerQuery); const localIndex = exactIndex >= 0 ? exactIndex : locations.findIndex(location => `${location.name} ${location.note}`.toLowerCase().includes(lowerQuery)); if (localIndex >= 0) { locations[localIndex].pinnedToMap = true; locations[localIndex].hidden = false; clearExternalSearchMarker(); renderList(query); map.panTo({ lat:locations[localIndex].lat, lng:locations[localIndex].lng }); focusLocation(localIndex); document.querySelector('#status').textContent = `${locations[localIndex].name} ${language === 'ru' ? 'добавлена на карту.' : 'added to map.'}`; return; } clearExternalSearchMarker(); await focusSearchLocation(false); addExternalSearchResultToMap(); }
-    async function focusSearchLocation(zoomToLocation = true) { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = 'Введите название, адрес или координаты.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => !location.hidden && location.name.toLowerCase() === lowerQuery); const matchIndex = exactIndex >= 0 ? exactIndex : locations.findIndex(location => !location.hidden && `${location.name} ${location.note}`.toLowerCase().includes(lowerQuery)); if (matchIndex >= 0) { clearExternalSearchMarker(); map.panTo({ lat:locations[matchIndex].lat, lng:locations[matchIndex].lng }); if (zoomToLocation) map.setZoom(13); focusLocation(matchIndex); return; } const coordinates = coordinatesFromQuery(query); if (coordinates) { showExternalSearchResult({ name:'Coordinates', position:coordinates, zoomToLocation, address:`${coordinates.lat}, ${coordinates.lng}` }); return; } document.querySelector('#status').textContent = 'Ищу локацию в Google Maps…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchByText({ textQuery:query, fields:['displayName','location','formattedAddress','googleMapsURI'], locationBias:map.getCenter(), maxResultCount:1 }); const place = places?.[0]; if (!place?.location) { document.querySelector('#status').textContent = 'Локация не найдена.'; return; } showExternalSearchResult({ name:place.displayName || query, zoomToLocation, position:place.location, address:place.formattedAddress || '', mapsUri:place.googleMapsURI || '' }); } catch (error) { console.error(error); document.querySelector('#status').textContent = `Не удалось найти локацию: ${error.message || 'проверьте Places API (New)'}`; } }
-    function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const value = query.trim().toLowerCase(); if (!value) { suggestions.innerHTML = ''; suggestions.classList.remove('visible'); return; } const matches = locations.filter(location => `${location.name} ${location.note}`.toLowerCase().includes(value)).slice(0, 8); suggestions.innerHTML = matches.map(location => `<div class="search-suggestion" data-suggestion="${escapeHtml(location.name)}">${escapeHtml(location.name)}</div>`).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
+    async function addCurrentSearchToMap() { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = language === 'ru' ? 'Введите адрес, название или координаты.' : 'Enter an address, name, or coordinates.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => location.name.toLowerCase() === lowerQuery); const localIndex = exactIndex >= 0 ? exactIndex : locations.indexOf(searchLocations(query, true)[0]); if (localIndex >= 0) { locations[localIndex].pinnedToMap = true; locations[localIndex].hidden = false; clearExternalSearchMarker(); renderList(query); map.panTo({ lat:locations[localIndex].lat, lng:locations[localIndex].lng }); focusLocation(localIndex); document.querySelector('#status').textContent = `${locations[localIndex].name} ${language === 'ru' ? 'добавлена на карту.' : 'added to map.'}`; return; } clearExternalSearchMarker(); await focusSearchLocation(false); addExternalSearchResultToMap(); }
+    async function focusSearchLocation(zoomToLocation = true) { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = 'Введите название, адрес или координаты.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => !location.hidden && location.name.toLowerCase() === lowerQuery); const matchIndex = exactIndex >= 0 ? exactIndex : locations.indexOf(searchLocations(query)[0]); if (matchIndex >= 0) { clearExternalSearchMarker(); map.panTo({ lat:locations[matchIndex].lat, lng:locations[matchIndex].lng }); if (zoomToLocation) map.setZoom(13); focusLocation(matchIndex); return; } const coordinates = coordinatesFromQuery(query); if (coordinates) { showExternalSearchResult({ name:'Coordinates', position:coordinates, zoomToLocation, address:`${coordinates.lat}, ${coordinates.lng}` }); return; } document.querySelector('#status').textContent = 'Ищу локацию в Google Maps…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchByText({ textQuery:query, fields:['displayName','location','formattedAddress','googleMapsURI'], locationBias:map.getCenter(), maxResultCount:1 }); const place = places?.[0]; if (!place?.location) { document.querySelector('#status').textContent = 'Локация не найдена.'; return; } showExternalSearchResult({ name:place.displayName || query, zoomToLocation, position:place.location, address:place.formattedAddress || '', mapsUri:place.googleMapsURI || '' }); } catch (error) { console.error(error); document.querySelector('#status').textContent = `Не удалось найти локацию: ${error.message || 'проверьте Places API (New)'}`; } }
+    function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const matches = searchLocations(query).slice(0, 8); suggestions.innerHTML = matches.map(location => suggestionMarkup(location, 'data-suggestion')).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
     document.querySelector('#search').addEventListener('input', e => { if (!e.target.value.trim()) clearExternalSearchMarker(); renderSearchSuggestions(e.target.value); renderList(e.target.value); });
     document.querySelector('#search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); focusSearchLocation(); } });
     document.querySelector('#focusSearchLocation').addEventListener('click', focusSearchLocation);
@@ -506,7 +599,7 @@ const nameI = find(['name','название','локация','место','lin
       if (!query) { document.querySelector('#status').textContent = language === 'ru' ? 'Введите адрес, название или координаты.' : 'Enter an address, name, or coordinates.'; return; }
       const lowerQuery = query.toLowerCase();
       const exactIndex = locations.findIndex(location => location.name.toLowerCase() === lowerQuery);
-      const index = exactIndex >= 0 ? exactIndex : locations.findIndex(location => `${location.name} ${location.note}`.toLowerCase().includes(lowerQuery));
+      const index = exactIndex >= 0 ? exactIndex : locations.indexOf(searchLocations(query, true)[0]);
       if (index >= 0) addLocationToRoute(index);
       else {
         clearExternalSearchMarker();
