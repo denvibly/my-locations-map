@@ -97,6 +97,8 @@
     .market-legend i { width:12px; height:12px; flex:0 0 12px; border-radius:50%; }
     .route { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
     .route-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+    .route-heading-actions { display:flex; gap:7px; }
+    #reverseRoute svg { width:20px; height:20px; vertical-align:middle; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
     .route h3 { margin:0; font-size:14px; }
     .clear-built-route { width:30px !important; height:30px; padding:0 !important; border:1px solid #cbd9d7 !important; border-radius:8px !important; background:#f4f8f7 !important; color:#60747a !important; font-size:17px !important; line-height:1 !important; }
     .clear-built-route:hover { background:#fde8e7 !important; border-color:#efb2ad !important; color:#b42318 !important; }
@@ -164,7 +166,7 @@
       </div>
       <div id="marketLegend" class="market-legend"></div>
       <div class="route">
-        <div class="route-heading"><h3 data-i18n="route">Маршрут</h3><button id="clearBuiltRoute" class="clear-built-route" type="button" title="Очистить построенный маршрут" aria-label="Очистить построенный маршрут">⌫</button></div>
+        <div class="route-heading"><h3 data-i18n="route">Маршрут</h3><div class="route-heading-actions"><button id="reverseRoute" class="clear-built-route" type="button" title="Развернуть маршрут" aria-label="Развернуть маршрут"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19V4m-4 4 4-4 4 4M17 5v15m-4-4 4 4 4-4"/></svg></button><button id="clearBuiltRoute" class="clear-built-route" type="button" title="Очистить построенный маршрут" aria-label="Очистить построенный маршрут">⌫</button></div></div>
         <div id="routePoints"></div>
         <div class="route-actions"><button id="openRoute" class="secondary">Google maps</button><button id="buildRoute" data-i18n="buildRoute">Построить маршрут</button></div>
         <div id="routeResult" class="route-result" data-i18n="routeHint">Выберите точки по порядку посещения.</div>
@@ -317,6 +319,7 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#openRoute').addEventListener('click', openRouteInGoogleMaps);
       document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
       document.querySelector('#clearBuiltRoute').addEventListener('click', () => { clearBuiltRoute(); document.querySelector('#routeResult').textContent = 'Маршрут очищен с карты.'; });
+      document.querySelector('#reverseRoute').addEventListener('click', reverseRoute);
     }
     function isActiveCrewProject(location) {
       const status = `${location.cxStatus || ''} ${location.status || ''}`.toLowerCase();
@@ -519,6 +522,28 @@ const nameI = find(['name','название','локация','место','lin
     function clearBuiltRoute() { routeRequestVersion++; document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
     function routePointFromInput(input) { const local = locations.find(location => location.name === input.value.trim()); if (local) return { lat:local.lat, lng:local.lng }; const lat = Number(input.dataset.routeLat); const lng = Number(input.dataset.routeLng); return input.value.trim() && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null; }
     function selectedRoutePoints() { return [...document.querySelectorAll('[data-route-point]')].map(routePointFromInput).filter(Boolean); }
+    function reverseRoute() {
+      const inputs = [...document.querySelectorAll('[data-route-point]')].filter(input => input.value.trim());
+      if (inputs.length < 2) return;
+      const points = inputs.map(input => ({ value:input.value, lat:input.dataset.routeLat, lng:input.dataset.routeLng })).reverse();
+      const wasBuilt = document.querySelector('.route').classList.contains('has-built-route');
+      inputs.forEach((input, index) => {
+        const point = points[index];
+        input.value = point.value;
+        delete input.dataset.routeLat;
+        delete input.dataset.routeLng;
+        if (point.lat !== undefined) input.dataset.routeLat = point.lat;
+        if (point.lng !== undefined) input.dataset.routeLng = point.lng;
+      });
+      document.querySelectorAll('.route-suggestions').forEach(node => node.remove());
+      highlightedRouteIndex = -1;
+      routeSelection = new Set(inputs.map(input => locations.findIndex(location => location.name === input.value.trim())).filter(index => index >= 0));
+      clearBuiltRoute();
+      document.querySelector('#routeResult').textContent = t('routeHint');
+      renderList(document.querySelector('#search').value);
+      if (wasBuilt) buildRouteOnMap();
+      saveUndoState();
+    }
     function buildWarehouseRoute(siteIndex, warehouseIndex) {
       const site = locations[siteIndex], warehouse = locations[warehouseIndex];
       if (!site || !warehouse || !warehousesForSite(site).includes(warehouse)) return;
@@ -727,6 +752,9 @@ const nameI = find(['name','название','локация','место','lin
     const originalApplyLanguage = applyLanguage;
     applyLanguage = function() {
       originalApplyLanguage();
+      const reverseButton = document.querySelector('#reverseRoute');
+      reverseButton.title = language === 'ru' ? 'Развернуть маршрут' : 'Reverse route';
+      reverseButton.setAttribute('aria-label', reverseButton.title);
       updateUndoButton();
       [['addToMap', 'addToMap'], ['addSearchToRoute', 'addToRoute']].forEach(([id, key]) => {
         const button = document.getElementById(id);
