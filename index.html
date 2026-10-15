@@ -60,7 +60,7 @@
     .active-toggle-row { justify-content:space-between; flex-wrap:wrap; row-gap:7px; }
     .active-toggle-main, .active-hide-options, .active-hide-option { display:flex; align-items:center; }
     .active-toggle-main { gap:6px; cursor:pointer; font-size:10px; white-space:nowrap; }
-    .active-hide-options { gap:3px; margin-left:auto; color:var(--ink); font-size:8px; font-weight:700; }
+    .active-hide-options { gap:3px; margin-left:auto; color:var(--ink); font-size:8px; font-weight:700; flex-wrap:wrap; justify-content:flex-end; row-gap:5px; max-width:100%; }
     .active-hide-label { color:var(--muted); font-weight:700; }
     .active-hide-option { gap:2px; cursor:pointer; white-space:nowrap; }
     .active-hide-option input { width:12px; height:12px; }
@@ -160,7 +160,7 @@
         <label class="location-toggle"><input id="showLabelsToggle" type="checkbox"> <span data-i18n="showLabels">Показать ярлыки</span></label>
         <label class="location-toggle"><input id="showCrewsToggle" type="checkbox"> <span data-i18n="showCrews">Показать бригадиров</span></label>
         <label class="location-toggle"><input id="showNotesToggle" type="checkbox"> <span data-i18n="showNotes">Показать заметки</span></label>
-        <div class="location-toggle active-toggle-row"><label class="active-toggle-main"><input id="activeLocationsToggle" type="checkbox"> <span data-i18n="activeLocations">Активные</span></label><div class="active-hide-options"><span class="active-hide-label" data-i18n="hide">Скрыть:</span><label class="active-hide-option"><input id="hideActiveSitesToggle" type="checkbox"> <span data-i18n="active">Активные</span></label><label class="active-hide-option"><input id="hideActiveNotStartedToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label><label class="active-hide-option"><input id="hideActiveWhToggle" type="checkbox"> <span data-i18n="warehouses">Склады</span></label><label class="active-hide-option"><input id="hideActiveIphToggle" type="checkbox"> <span data-i18n="issues">Проблемные</span></label></div></div>
+        <div class="location-toggle active-toggle-row"><label class="active-toggle-main"><input id="activeLocationsToggle" type="checkbox"> <span data-i18n="activeLocations">Активные</span></label><div class="active-hide-options"><span class="active-hide-label" data-i18n="hide">Скрыть:</span><label class="active-hide-option"><input id="hideActiveSitesToggle" type="checkbox"> <span data-i18n="active">Активные</span></label><label class="active-hide-option"><input id="hideActiveNotStartedToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label><label class="active-hide-option"><input id="hideActiveWhToggle" type="checkbox"> <span data-i18n="warehouses">Склады</span></label><label class="active-hide-option"><input id="hideActiveIphToggle" type="checkbox"> <span data-i18n="issues">Проблемные</span></label><label class="active-hide-option"><input id="hideActiveSoonToggle" type="checkbox"> <span>Soon</span></label></div></div>
         <label class="location-toggle"><input id="notStartedLocationsToggle" type="checkbox"> <span data-i18n="notStarted">Не начато</span></label>
         <label class="location-toggle"><input id="showAllLocationsToggle" type="checkbox"> <span data-i18n="showAll">Показать все локации</span></label>
       </div>
@@ -304,6 +304,7 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#hideActiveNotStartedToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#hideActiveWhToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#hideActiveIphToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
+      document.querySelector('#hideActiveSoonToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#hideActiveSitesToggle').addEventListener('change', () => renderList(document.querySelector('#search').value));
       document.querySelector('#notStartedLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#showAllLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
       document.querySelector('#showAllLocationsToggle').addEventListener('change', event => { if (event.target.checked) { document.querySelector('#activeLocationsToggle').checked = false; document.querySelector('#notStartedLocationsToggle').checked = false; } renderList(document.querySelector('#search').value); });
@@ -320,6 +321,16 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#buildRoute').addEventListener('click', buildRouteOnMap);
       document.querySelector('#clearBuiltRoute').addEventListener('click', () => { clearBuiltRoute(); document.querySelector('#routeResult').textContent = 'Маршрут очищен с карты.'; });
       document.querySelector('#reverseRoute').addEventListener('click', reverseRoute);
+    }
+    function isStartingSoon(location, today = new Date()) {
+      if (String(location.locationType || '').trim().toUpperCase() === 'WH' || /completed/i.test(`${location.status || ''} ${location.cxStatus || ''}`)) return false;
+      const start = dateNumber(location.start);
+      const firstDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+      return Boolean(start) && start >= firstDay && start <= firstDay + 4 * 86400000;
+    }
+    function isNotStartedOutsideSoon(location, today = new Date()) {
+      if (String(location.locationType || '').trim().toUpperCase() === 'WH' || !/not started/i.test(`${location.status || ''} ${location.cxStatus || ''}`)) return false;
+      return !isStartingSoon(location, today);
     }
     function isActiveCrewProject(location) {
       const status = `${location.cxStatus || ''} ${location.status || ''}`.toLowerCase();
@@ -399,6 +410,7 @@ const nameI = find(['name','название','локация','место','lin
       const hideActiveNotStarted = document.querySelector('#hideActiveNotStartedToggle')?.checked ?? false;
       const hideActiveWh = document.querySelector('#hideActiveWhToggle')?.checked ?? false;
       const hideActiveIph = document.querySelector('#hideActiveIphToggle')?.checked ?? false;
+      const hideActiveSoon = document.querySelector('#hideActiveSoonToggle')?.checked ?? false;
       const hideActiveSites = document.querySelector('#hideActiveSitesToggle')?.checked ?? false;
       const notStartedOnly = document.querySelector('#notStartedLocationsToggle')?.checked ?? false;
       const hasSearchQuery = Boolean(query.trim());
@@ -410,8 +422,8 @@ const nameI = find(['name','название','локация','место','lin
       const filterMatches = availableLocations.filter(matchesFilters);
       const searchResults = hasSearchQuery ? searchLocations(query) : [];
       const searchMatches = searchResults.filter(matchesFilters);
-      const activeMatches = availableLocations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); const isActiveSite = !isWh && !isNotStarted && !isIph && !statusText.includes('completed'); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveSites || !isActiveSite) && (!hideActiveNotStarted || !isNotStarted) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && matchesFilters(location); });
-      const notStartedMatches = availableLocations.filter(location => location.cxStatus.toLowerCase().includes('not started') && matchesFilters(location));
+      const activeMatches = availableLocations.filter(location => { const statusText = `${location.status} ${location.cxStatus}`.toLowerCase(); const isNotStarted = statusText.includes('not started'); const isWh = location.locationType.trim().toUpperCase() === 'WH'; const isIph = /issue|pending|on[ -]?hold/.test(statusText); const isActiveSite = !isWh && !isNotStarted && !isIph && !statusText.includes('completed'); return location.active.replace(/\s+/g, ' ').toLowerCase().includes('active locations') && (!hideActiveSites || !isActiveSite) && (!hideActiveNotStarted || !isNotStartedOutsideSoon(location)) && (!hideActiveWh || !isWh) && (!hideActiveIph || !isIph) && (!hideActiveSoon || !isStartingSoon(location)) && matchesFilters(location); });
+      const notStartedMatches = availableLocations.filter(location => isNotStartedOutsideSoon(location) && matchesFilters(location));
       const searchedLocation = searchResults.find(location => location.name.toLowerCase() === query.trim().toLowerCase()) || searchResults[0] || null;
       const modeMatches = activeOnly ? activeMatches : notStartedOnly ? notStartedMatches : showAll || hasSelectedFilters ? filterMatches : [];
       const filtered = hasSearchQuery ? [...new Set([...modeMatches, ...searchMatches])] : modeMatches;
