@@ -65,6 +65,9 @@
     .active-hide-option { gap:2px; cursor:pointer; white-space:nowrap; }
     .active-hide-option input { width:12px; height:12px; }
     .map-location-label-layer { position:absolute; inset:0; pointer-events:none; }
+    .map-location-label-connectors { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+    .map-location-label-connectors line { stroke:#607d78; stroke-width:1.2; }
+    .map-location-label { z-index:1; }
     .map-location-label { position:absolute; max-width:190px; padding:3px 6px; border:1px solid rgba(16,33,43,.18); border-radius:5px; background:rgba(255,255,255,.92); box-shadow:0 2px 7px rgba(15,23,42,.16); color:var(--ink); font-size:10px; line-height:1.25; white-space:pre; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%, -100%); }
     .filters-title { margin:0 0 8px; color:var(--ink); font-size:16px; font-weight:800; }
     .filters-section { margin-top:24px; padding:16px 12px 12px; border:1px solid #dce6e8; border-radius:14px; background:#f2f6f7; }
@@ -221,19 +224,40 @@
 
     function createLocationLabelsOverlay(mapInstance, items) { class LocationLabelsOverlay extends google.maps.OverlayView {
       constructor(mapInstance, items) { super(); this.mapInstance = mapInstance; this.items = items; this.enabled = false; this.crewsEnabled = false; this.notesEnabled = false; this.visibleIndexes = []; this.nodes = new Map(); this.setMap(mapInstance); }
-      onAdd() { this.layer = document.createElement('div'); this.layer.className = 'map-location-label-layer'; this.getPanes().floatPane.appendChild(this.layer); }
+      onAdd() { this.layer = document.createElement('div'); this.layer.className = 'map-location-label-layer'; this.connectorLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); this.connectorLayer.classList.add('map-location-label-connectors'); this.layer.appendChild(this.connectorLayer); this.getPanes().floatPane.appendChild(this.layer); }
       onRemove() { this.layer?.remove(); this.nodes.clear(); }
       setEnabled(enabled) { this.enabled = enabled; this.nodes.forEach(node => node.remove()); this.nodes.clear(); if (this.layer) this.layer.style.display = enabled || this.crewsEnabled || this.notesEnabled ? 'block' : 'none'; this.draw(); }
       setCrewsEnabled(enabled) { this.crewsEnabled = enabled; this.nodes.forEach(node => node.remove()); this.nodes.clear(); if (this.layer) this.layer.style.display = this.enabled || enabled || this.notesEnabled ? 'block' : 'none'; this.draw(); }
       setNotesEnabled(enabled) { this.notesEnabled = enabled; this.nodes.forEach(node => node.remove()); this.nodes.clear(); if (this.layer) this.layer.style.display = this.enabled || this.crewsEnabled || enabled ? 'block' : 'none'; this.draw(); }
       setVisibleIndexes(indexes) { this.visibleIndexes = indexes; this.draw(); }
       draw() {
+        this.connectorLayer?.replaceChildren();
         if (!this.layer || (!this.enabled && !this.crewsEnabled && !this.notesEnabled)) return;
         const projection = this.getProjection(); if (!projection) return;
         const activeIndexes = new Set(this.visibleIndexes);
         this.nodes.forEach((node, index) => { if (!activeIndexes.has(index)) { node.remove(); this.nodes.delete(index); } });
         const placed = [];
         const overlapArea = (first, second) => Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+        const markerBounds = (position, icon) => {
+          const pixel = projection.fromLatLngToDivPixel(position);
+          if (!pixel) return null;
+          const scale = icon?.scale || .75;
+          const shape = icon?.path;
+          const halfWidth = shape === markerShapes.notStarted ? 24 : shape === markerShapes.warehouse || shape === markerShapes.paused ? 20 : shape === markerShapes.active ? 18 : 27;
+          const height = shape === markerShapes.notStarted ? 42 : shape === markerShapes.paused || shape === markerShapes.completed ? 40 : 48;
+          const padding = (icon?.strokeWeight || 2) / 2;
+          return { left:pixel.x - halfWidth * scale - padding, right:pixel.x + halfWidth * scale + padding, top:pixel.y - height * scale - padding, bottom:pixel.y + padding };
+        };
+        const boundsByIndex = new Map(this.visibleIndexes.map(index => {
+          const location = this.items[index];
+          return [index, location ? markerBounds(new google.maps.LatLng(location.lat, location.lng), markers[index]?.getIcon() || markerIcon(location)) : null];
+        }));
+        const obstacles = [...boundsByIndex.values()].filter(Boolean);
+        [...addedMarkers, ...hotelMarkers, externalSearchMarker].filter(Boolean).forEach(marker => {
+          if (!marker.getMap() || !marker.getVisible()) return;
+          const bounds = markerBounds(marker.getPosition(), marker.getIcon());
+          if (bounds) obstacles.push(bounds);
+        });
         this.visibleIndexes.forEach(index => {
           const location = this.items[index]; if (!location) return;
           const labelText = [this.enabled ? location.name : '', this.crewsEnabled && location.crewLead ? `Crew: ${location.crewLead}` : '', this.notesEnabled ? location.custom2 : ''].filter(Boolean).join('\n');
@@ -242,23 +266,50 @@
           if (!node) { node = document.createElement('div'); node.className = 'map-location-label'; this.layer.appendChild(node); this.nodes.set(index, node); }
           node.textContent = labelText;
           const pixel = projection.fromLatLngToDivPixel(new google.maps.LatLng(location.lat, location.lng));
+          const ownBounds = boundsByIndex.get(index);
+          if (!pixel || !ownBounds) { node.style.display = 'none'; return; }
           node.style.display = 'block';
           const width = node.offsetWidth; const height = node.offsetHeight;
           let placement;
-          let closestPlacement;
-          let smallestOverlap = Infinity;
-          for (let attempt = 0; attempt < 80; attempt += 1) {
-            const angle = attempt * 2.399963229728653;
-            const radius = attempt === 0 ? 8 : 14 + Math.sqrt(attempt) * 12;
-            const x = pixel.x + Math.cos(angle) * radius;
-            const y = pixel.y - 8 + Math.sin(angle) * radius;
-            const rect = { left:x - width / 2, right:x + width / 2, top:y - height, bottom:y };
-            const overlap = placed.reduce((total, other) => total + overlapArea(rect, other), 0);
-            if (overlap === 0) { placement = { x, y, rect }; break; }
-            if (overlap < smallestOverlap) { smallestOverlap = overlap; closestPlacement = { x, y, rect }; }
+          const centerX = (ownBounds.left + ownBounds.right) / 2;
+          const centerY = (ownBounds.top + ownBounds.bottom) / 2;
+          let nearestIndex = -1, nearestDistance = Infinity;
+          boundsByIndex.forEach((bounds, otherIndex) => {
+            if (!bounds || otherIndex === index) return;
+            const distance = ((bounds.left + bounds.right) / 2 - centerX) ** 2 + ((bounds.top + bounds.bottom) / 2 - centerY) ** 2;
+            if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = otherIndex; }
+          });
+          const neighbor = boundsByIndex.get(nearestIndex);
+          const preferLeft = neighbor && (centerX < (neighbor.left + neighbor.right) / 2 || (centerX === (neighbor.left + neighbor.right) / 2 && index < nearestIndex));
+          const sides = preferLeft ? ['left', 'right', 'top', 'bottom'] : ['right', 'left', 'top', 'bottom'];
+          for (let ring = 0; ring < 10 && !placement; ring += 1) {
+            const gap = ring * 18;
+            for (const step of [0, -1, 1, -2, 2, -3, 3]) {
+              for (const side of sides) {
+                const horizontal = side === 'left' || side === 'right';
+                const offset = step * (horizontal ? height + 6 : width + 6);
+                const left = side === 'left' ? ownBounds.left - gap - width : side === 'right' ? ownBounds.right + gap : centerX - width / 2 + offset;
+                const top = side === 'top' ? ownBounds.top - gap - height : side === 'bottom' ? ownBounds.bottom + gap : centerY - height / 2 + offset;
+                const rect = { left, right:left + width, top, bottom:top + height };
+                if (obstacles.some(other => overlapArea(rect, other) > 0) || placed.some(other => overlapArea({ left:left - 3, right:rect.right + 3, top:top - 3, bottom:rect.bottom + 3 }, other) > 0)) continue;
+                placement = { x:left + width / 2, y:top + height, rect, side };
+                break;
+              }
+              if (placement) break;
+            }
           }
-          if (!placement) placement = closestPlacement || { x:pixel.x, y:pixel.y - 8, rect:{ left:pixel.x - width / 2, right:pixel.x + width / 2, top:pixel.y - 8 - height, bottom:pixel.y - 8 } };
+          if (!placement) { node.style.display = 'none'; return; }
           node.style.left = `${placement.x}px`; node.style.top = `${placement.y}px`; placed.push(placement.rect);
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          const side = placement.side;
+          const rect = placement.rect;
+          const horizontal = side === 'left' || side === 'right';
+          const startX = horizontal ? (side === 'left' ? ownBounds.left : ownBounds.right) : centerX;
+          const startY = horizontal ? centerY : (side === 'top' ? ownBounds.top : ownBounds.bottom);
+          const endX = horizontal ? (side === 'left' ? rect.right : rect.left) : Math.max(rect.left, Math.min(rect.right, centerX));
+          const endY = horizontal ? Math.max(rect.top, Math.min(rect.bottom, centerY)) : (side === 'top' ? rect.bottom : rect.top);
+          Object.entries({ x1:startX, y1:startY, x2:endX, y2:endY }).forEach(([attribute, value]) => line.setAttribute(attribute, value));
+          this.connectorLayer.appendChild(line);
         });
       }
     }
