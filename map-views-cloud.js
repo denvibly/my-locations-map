@@ -6,6 +6,8 @@ window.mapViewsCloud = (() => {
   const storageKey = 'locations-map-saved-views-v1';
   const protocol = 'locations-map-cloud-v1';
   const pending = new Map();
+  let bridgeChannel = '';
+  try {bridgeChannel=sessionStorage.getItem(storageKey+'-channel') || '';} catch {}
   let user = null, endpoint = embedded ? window.parent : null, bridgeFrame = null, accountWindow = null, bridgeReady = false;
   let started = false, migrationChecked = false, legacyLibrary = null, legacyRaw = null;
   function sendPending() {
@@ -28,15 +30,18 @@ window.mapViewsCloud = (() => {
     window.dispatchEvent(new Event('map-cloud-disconnected'));
   }
   window.addEventListener('message', event => {
-    if (event.origin !== onlineUrl || event.data?.protocol !== protocol) return;
+    if (event.origin !== onlineUrl || !event.source || event.data?.protocol !== protocol) return;
+    if (standalone && event.data.type==='bridge-ready' && bridgeChannel && event.data.channel===bridgeChannel && event.source!==window) accountWindow=event.source;
     const trusted = embedded ? event.source === window.parent : standalone && (event.source === bridgeFrame?.contentWindow || event.source === accountWindow);
     if (!trusted) return;
     if (event.data.type === 'bridge-ready') {
+      if (standalone && event.source===accountWindow && event.data.channel!==bridgeChannel) return;
+      if (standalone && bridgeReady && endpoint===bridgeFrame?.contentWindow && event.source===accountWindow) return;
       const changed = !bridgeReady;
       endpoint = event.source;
       bridgeReady = true;
       sendPending();
-      if (standalone && event.source===accountWindow && bridgeFrame) bridgeFrame.src=onlineUrl+'/bridge';
+      if (changed && standalone && event.source===accountWindow && bridgeFrame) bridgeFrame.src=onlineUrl+'/bridge';
       if (changed) window.dispatchEvent(new Event('map-cloud-connected'));
       return;
     }
@@ -112,7 +117,10 @@ window.mapViewsCloud = (() => {
   function connect(signOut = false) {
     if (!standalone) return false;
     if (signOut) disconnect();
-    accountWindow = window.open(onlineUrl+(signOut ? '/signout-with-chatgpt?return_to=/bridge' : '/bridge'),'locations-map-account','popup,width=540,height=620');
+    bridgeChannel=crypto.randomUUID();
+    try {sessionStorage.setItem(storageKey+'-channel',bridgeChannel);} catch {}
+    const path='/bridge?channel='+encodeURIComponent(bridgeChannel);
+    accountWindow = window.open(onlineUrl+(signOut ? '/signout-with-chatgpt?return_to='+encodeURIComponent(path) : path),'locations-map-account','popup,width=540,height=620');
     return !!accountWindow;
   }
   function transferLegacy() {
@@ -161,7 +169,6 @@ window.mapViewsCloud = (() => {
       if (wasEndpoint) {disconnect();if(bridgeFrame)bridgeFrame.src=onlineUrl+'/bridge';}
     }
     if (!bridgeReady && pending.size) (embedded ? window.parent : bridgeFrame?.contentWindow)?.postMessage({protocol,type:'bridge-hello'},onlineUrl);
-    if (bridgeReady && endpoint===bridgeFrame?.contentWindow && accountWindow && !pending.size) {accountWindow.close();accountWindow=null;}
   },1000);
   return {required,standalone,onlineUrl,load,save,start,connect,get user(){return user}};
 })();
