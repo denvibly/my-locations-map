@@ -26,6 +26,29 @@
     .refresh-locations:hover { background:var(--soft); }
     .language-toggle { min-width:42px; height:38px; padding:0 8px; border:1px solid #b8d8d0; border-radius:8px; background:#fff; color:var(--accent); font:inherit; font-size:11px; font-weight:800; cursor:pointer; }
     .language-toggle:hover { background:var(--soft); }
+    .saved-views { margin:16px 0; padding:12px; border:1px solid #d6e5e1; border-radius:12px; background:#f0f7f5; }
+    .saved-views summary { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--accent); font-size:13px; font-weight:800; cursor:pointer; list-style:none; user-select:none; }
+    .saved-views summary::-webkit-details-marker { display:none; }
+    .saved-views summary::after { content:''; width:7px; height:7px; flex:0 0 7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); }
+    .saved-views[open] summary::after { transform:rotate(45deg); }
+    .saved-views summary:focus-visible { outline:2px solid var(--accent); outline-offset:5px; border-radius:3px; }
+    .saved-views:not([open]) > :not(summary) { display:none; }
+    .saved-views select, .saved-views input { width:100%; min-width:0; margin-top:10px; padding:9px; border:1px solid #d4dfdd; border-radius:8px; background:#fff; color:var(--ink); font:inherit; font-size:12px; }
+    .saved-view-create { display:flex; gap:6px; align-items:stretch; margin-top:8px; }
+    .saved-view-create input { margin-top:0; flex:1; }
+    .saved-views button { padding:8px 10px; border:1px solid #b8d8d0; border-radius:8px; background:#fff; color:var(--accent); font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+    .saved-view-create button { background:var(--accent); color:#fff; }
+    .saved-view-actions { display:flex; gap:6px; margin-top:8px; }
+    .saved-view-actions button { flex:1; }
+    .saved-views button:disabled { opacity:.45; cursor:default; }
+    .saved-views .saved-view-delete { color:#b42318; border-color:#e8d3d0; }
+    .saved-views p { margin:9px 0 0; color:var(--muted); font-size:10px; line-height:1.5; }
+    .saved-views .saved-view-message { color:var(--accent); }
+    .saved-view-message:empty { display:none; }
+    .saved-view-account { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:10px; color:var(--muted); font-size:10px; overflow-wrap:anywhere; }
+    .saved-view-account a { color:var(--accent); font-weight:700; }
+    .saved-view-transfer { display:flex; gap:6px; margin-top:8px; }
+    .saved-view-transfer button { flex:1; font-weight:500; }
     .search-suggestions { display:none; position:relative; z-index:30; margin:-6px 0 8px; padding:5px; border:1px solid #b8d8d0; border-radius:10px; background:#fff; box-shadow:0 8px 20px #153b3822; }
     .search-suggestions.visible { display:block; }
     .search-suggestion { padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; }
@@ -170,6 +193,16 @@
       <div class="search-row"><input id="search" class="search" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск сайта, адреса или координат…" /><button id="focusSearchLocation" class="search-focus" type="button" title="Показать на карте" aria-label="Показать найденную локацию на карте">⌕</button></div>
       <div id="searchSuggestions" class="search-suggestions"></div>
       <div class="search-actions"><button id="addToMap" class="find-hotel search-add" type="button" title="Добавить на карту" aria-label="Добавить на карту"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 20s-7-6-7-11a7 7 0 0 1 14 0c0 2-1 4-2 5"/><circle cx="13" cy="9" r="2"/><path d="M18 17v6m-3-3h6"/></svg></button><button id="addSearchToRoute" class="find-hotel search-add" type="button" title="Добавить в маршрут" aria-label="Добавить в маршрут"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M7 5h5a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h3m7-4v8m-4-4h8"/></svg></button><button id="refreshLocations" class="refresh-locations" type="button" title="Обновить локации" aria-label="Обновить локации">↻</button><button id="languageToggle" class="language-toggle" type="button" aria-label="Switch language">EN</button></div>
+      <details id="savedViews" class="saved-views">
+        <summary data-i18n="savedViews">Виды карты</summary>
+        <div class="saved-view-account"><span id="cloudViewStatus"></span><a id="cloudAccountLink" target="_top"></a><button id="retryCloudViews" type="button" hidden>↻</button></div>
+        <select id="savedViewSelect" aria-label="Сохранённые виды карты"></select>
+        <div class="saved-view-create"><input id="savedViewName" maxlength="80" data-i18n-placeholder="viewName" placeholder="Название нового вида"><button id="saveNewView" type="button" data-i18n="saveView" disabled>Сохранить</button></div>
+        <div class="saved-view-actions"><button id="openSavedView" type="button" data-i18n="openView" disabled>Открыть</button><button id="updateSavedView" type="button" data-i18n="updateView" disabled>Обновить</button><button id="deleteSavedView" class="saved-view-delete" type="button" data-i18n="deleteView" disabled>Удалить</button></div>
+        <div class="saved-view-transfer"><button id="exportMapViews" type="button" data-i18n="exportViews">Скачать виды</button><button id="importMapViews" type="button" data-i18n="importViews">Перенести из файла</button><input id="importMapViewsFile" type="file" accept=".json,application/json" hidden></div>
+        <p data-i18n="savedViewsHint">Последний открытый вид загрузится при следующем открытии. Чтобы сохранить правки, нажмите «Обновить».</p>
+        <p id="savedViewMessage" class="saved-view-message" role="status" aria-live="polite"></p>
+      </details>
       <div class="location-toggles">
         <label class="location-toggle"><input id="showLabelsToggle" type="checkbox"> <span data-i18n="showLabels">Показать ярлыки</span></label>
         <label class="location-toggle"><input id="showCrewsToggle" type="checkbox"> <span data-i18n="showCrews">Показать бригадиров</span></label>
@@ -200,6 +233,7 @@
     <div class="legend"><b data-i18n="projects">Проекты:</b><span><i class="legend-icon legend-red"></i><b data-i18n="completed">Завершено</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-purple"></i><b data-i18n="pending">На паузе</b></span><span><i class="legend-icon legend-black"></i><b data-i18n="notStarted">Не начато</b></span><span><i class="legend-icon legend-lime"></i><b data-i18n="active">Активно</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-added"></i><b data-i18n="added">Добавлено</b></span></div>
   </main>
 
+  <script src="map-views-cloud.js"></script>
   <script>
     // Замените два значения ниже на свои данные.
     const CONFIG = {
@@ -210,7 +244,12 @@
       ru: { locationsHeading:'Локации', searchPlaceholder:'Поиск сайта, адреса или координат…', addToMap:'Добавить на карту', filters:'Фильтры', showLabels:'Показать ярлыки', showNotes:'Показать заметки', showCrews:'Показать бригадиров', activeLocations:'Активные', hide:'Скрыть:', notStarted:'Не начато', warehouses:'Склады', issues:'Проблемные', showAll:'Показать все локации', route:'Маршрут', buildRoute:'Построить маршрут', routeHint:'Выберите точки по порядку посещения.', dataRefreshNote:'Данные обновляются при каждом открытии страницы.', projects:'Проекты:', completed:'Завершено', pending:'На паузе', active:'Активно', added:'Добавлено', status:'Статус', locationType:'Тип локации', crewLead:'Бригадир', marketState:'Рынок/оператор', custom:'Другое', project:'Проект #', startAfter:'Старт после', filterSearch:'Поиск', routePoint:'Точка маршрута', addMore:'+ Ещё', addToRoute:'Добавить в маршрут', openMaps:'Открыть в Google Maps', hideButton:'Скрыть', address:'Адрес', week:'Неделя', drivingTime:'Время в пути', noResults:'Ничего не найдено.', clearRoute:'Маршрут очищен с карты.' },
       en: { locationsHeading:'Locations', searchPlaceholder:'Search site, address, or coordinates…', addToMap:'Add to map', filters:'Filters', showLabels:'Show Labels', showNotes:'Show Notes', showCrews:'Show Crews', activeLocations:'Active Locations', hide:'Hide:', notStarted:'Not Started', warehouses:'WH', issues:'I,P,H', showAll:'Show all locations', route:'Route', buildRoute:'Build route', routeHint:'Select points in visiting order.', dataRefreshNote:'Data refreshes every time the page opens.', projects:'Projects:', completed:'Completed', pending:'Pending / On-Hold', active:'Active', added:'Added', status:'Status', locationType:'Location Type', crewLead:'Crew Lead', marketState:'Market/Carrier States', custom:'Custom', project:'Project #', startAfter:'Start after', filterSearch:'Search', routePoint:'Route point', addMore:'+ Add more', addToRoute:'Add to route', openMaps:'Open in Google Maps', hideButton:'Hide', address:'Address', week:'Week', drivingTime:'Driving time', noResults:'No locations found.', clearRoute:'Route cleared from the map.' }
     };
-    let language = ['ru', 'en'].includes(localStorage.getItem('locations-map-language')) ? localStorage.getItem('locations-map-language') : 'ru';
+    Object.assign(translations.ru, { savedViews:'Виды карты', viewName:'Название нового вида', saveView:'Сохранить', updateView:'Обновить', deleteView:'Удалить', chooseView:'Выберите сохранённый вид', savedViewsHint:'Последний открытый вид загрузится при следующем открытии. Чтобы сохранить правки, нажмите «Обновить».', viewNameRequired:'Введите название вида.', viewNameTaken:'Такое название уже есть. Выберите его и нажмите «Обновить» или введите другое.', viewSaved:'Вид сохранён.', viewLoaded:'Вид открыт.', viewDeleted:'Сохранённый вид удалён.', viewStorageError:'Не удалось сохранить виды в этом браузере. Проверьте доступ к хранилищу и свободное место.', viewReadError:'Не удалось прочитать сохранённые виды. Данные в хранилище не изменены.', confirmDeleteView:'Удалить сохранённый вид', viewMissing:'Некоторые локации больше не найдены в таблице:', viewRouteMissing:'Некоторые точки маршрута больше не найдены в таблице:' });
+    Object.assign(translations.en, { savedViews:'Map views', viewName:'New view name', saveView:'Save', updateView:'Update', deleteView:'Delete', chooseView:'Choose a saved view', savedViewsHint:'The last opened view loads next time. Click Update to save your changes.', viewNameRequired:'Enter a view name.', viewNameTaken:'This name already exists. Select it and click Update, or choose another name.', viewSaved:'View saved.', viewLoaded:'View opened.', viewDeleted:'Saved view deleted.', viewStorageError:'Could not save views in this browser. Check storage access and available space.', viewReadError:'Could not read saved views. Stored data has not been changed.', confirmDeleteView:'Delete saved view', viewMissing:'Some locations are no longer in the sheet:', viewRouteMissing:'Some route points are no longer in the sheet:' });
+    Object.assign(translations.ru, { cloudAccount:'Войти в онлайн-карту', cloudSignOut:'Выйти', cloudLocal:'Виды пока только в этом браузере.', cloudLoading:'Подключаю ваши виды…', cloudConnected:'Сохранение в аккаунте', cloudError:'Нет соединения с хранилищем. Изменения на карте остаются на экране. Повторите сохранение после подключения.', cloudConflict:'Этот вид изменён на другом устройстве. Список обновлён; ваши правки остались на карте. Откройте свежий вид или сохраните свои правки под новым названием.', cloudSignIn:'Войти через ChatGPT', cloudHint:'Виды хранятся в вашем аккаунте и доступны на всех устройствах. Нажимайте «Обновить», чтобы сохранить правки.', exportViews:'Скачать виды', importViews:'Перенести из файла', importViewsDone:'Виды из файла сохранены.', importViewsError:'Не удалось прочитать файл видов. Выберите JSON-файл, скачанный с этой карты.', cloudListUpdated:'Список видов обновлён из аккаунта. Выберите вид, чтобы открыть его.' });
+    Object.assign(translations.en, { cloudAccount:'Sign in to online map', cloudSignOut:'Sign out', cloudLocal:'Views are only in this browser for now.', cloudLoading:'Connecting to your views…', cloudConnected:'Saved in your account', cloudError:'Storage connection unavailable. Your map changes are still on screen. Reconnect and save again.', cloudConflict:'This view changed on another device. The list has been refreshed; your edits are still on the map. Open the latest view or save your edits under a new name.', cloudSignIn:'Sign in with ChatGPT', cloudHint:'Views are stored in your account and available on all devices. Click Update to save your edits.', exportViews:'Download views', importViews:'Import file', importViewsDone:'Imported views saved.', importViewsError:'Could not read this views file. Choose a JSON file downloaded from this map.', cloudListUpdated:'The view list was refreshed from your account. Select a view to open it.' });
+    let language = 'ru';
+    try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
     const locationCountText = count => language === 'en' ? `${count} location${count === 1 ? '' : 's'}` : `${count} ${count % 10 === 1 && count % 100 !== 11 ? 'локация' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'локации' : 'локаций'}`;
     function fieldLabel(field) { return t(field.labelKey); }
@@ -707,7 +746,7 @@ const nameI = find(['name','название','локация','место','lin
       } catch (error) { document.querySelector('#routeResult').textContent = `${language === 'ru' ? 'Ошибка маршрута' : 'Route error'}: ${error.message}`; }
     }
     function openRouteInGoogleMaps() { const points = selectedRoutePoints(); if (points.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } window.open(`https://www.google.com/maps/dir/${points.map(point => `${point.lat},${point.lng}`).join('/')}`, '_blank'); }
-    function buildRouteOnMap() { const requestVersion = ++routeRequestVersion; const routeResult = document.querySelector('#routeResult'); const points = selectedRoutePoints(); if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } directionsService.route({ origin:points[0], destination:points.at(-1), waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { if (requestVersion !== routeRequestVersion) return; directionsRenderer.setDirections(result); const distance = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.distance?.value || 0), 0); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, { maximumFractionDigits:1 }).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small></span>`; saveUndoState(); }).catch(error => { if (requestVersion !== routeRequestVersion) return; console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; saveUndoState(); }); }
+    function buildRouteOnMap({ preserveViewport = false } = {}) { const requestVersion = ++routeRequestVersion; const routeResult = document.querySelector('#routeResult'); const points = selectedRoutePoints(); if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } directionsRenderer.setOptions({ preserveViewport }); return directionsService.route({ origin:points[0], destination:points.at(-1), waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { if (requestVersion !== routeRequestVersion) return; directionsRenderer.setDirections(result); const distance = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.distance?.value || 0), 0); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, { maximumFractionDigits:1 }).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small></span>`; saveUndoState(); }).catch(error => { if (requestVersion !== routeRequestVersion) return; console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; saveUndoState(); }); }
     function addLocationToRoute(index) { const location = locations[index]; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = location.name; target.dispatchEvent(new Event('input', { bubbles:true })); document.querySelector('#routeResult').textContent = `${location.name} added to route.`; }
     function hideLocation(index) { const location = locations[index]; if (!location) return; location.hidden = true; location.pinnedToMap = false; infoWindow.close(); renderList(document.querySelector('#search').value); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
     function addRoutePoint(point) { if (!point) return; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = point.routeLabel; target.dispatchEvent(new Event('input', { bubbles:true })); target.dataset.routeLat = point.lat; target.dataset.routeLng = point.lng; document.querySelector('#routeResult').textContent = `${point.routeLabel} added to route.`; }
@@ -715,7 +754,7 @@ const nameI = find(['name','название','локация','место','lin
     function addAddedLocationToRoute(index) { addRoutePoint(addedLocations[index]); }
     async function findHotelsNearLocation(location) { hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } }
     function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`pinLocationToMap(${index})`)}<button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button><button type="button" onclick="routeToIntekOffice(${index})">Intek</button>${String(x.locationType || '').trim().toUpperCase() !== 'WH' ? `<button type="button" onclick="routeToWarehouse(${index})">WH</button>` : ''}${markerColorControl('local', index, x)}</div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
-    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
+    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length && !savedMapViews.activeId) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function coordinatesFromQuery(query) { const match = String(query).trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/); if (!match) return null; const lat = Number(match[1]); const lng = Number(match[2]); return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; }
     function clearExternalSearchMarker() { if (externalSearchMarker) externalSearchMarker.setMap(null); externalSearchMarker = null; externalSearchResult = null; }
@@ -759,12 +798,304 @@ const nameI = find(['name','название','локация','место','lin
       document.head.appendChild(script);
       setTimeout(() => { if (!map) document.querySelector('#status').textContent = 'Карта не запустилась. Проверьте Maps JavaScript API, billing и ограничения API key.'; }, 8000);
     }
+    const savedViewsStorageKey = 'locations-map-saved-views-v1';
+    const cloudViews = window.mapViewsCloud;
+    translations.ru.openView='Открыть';
+    translations.en.openView='Open';
+    let cloudViewsReady = false, cloudViewsBusy = false;
+    let cloudRefreshInProgress = false;
+    let selectedSavedViewVersion = 0;
+    let savedViewsReadFailed = false;
+    let savedMapViews = readSavedMapViews();
+    let selectedSavedViewId = savedMapViews.activeId;
+    function validSavedMapViewState(state) {
+      if (!state || !state.toggles || Array.isArray(state.toggles) || !state.filters || Array.isArray(state.filters)) return false;
+      if (!Object.values(state.toggles).every(value => typeof value === 'boolean') || !Object.values(state.filters).every(values => Array.isArray(values) && values.every(value => typeof value === 'string'))) return false;
+      if (!Array.isArray(state.overrides) || !state.overrides.every(override => override && typeof override.reference?.name === 'string')) return false;
+      if (!Array.isArray(state.points) || !state.points.every(point => point && typeof point.value === 'string' && (!point.reference || typeof point.reference.name === 'string'))) return false;
+      if (!Array.isArray(state.added) || !state.added.every(point => savedMapPoint(point))) return false;
+      if (state.preview && !savedMapPoint(state.preview)) return false;
+      return !state.viewport || (Number.isFinite(state.viewport.center?.lat) && Number.isFinite(state.viewport.center?.lng) && Math.abs(state.viewport.center.lat) <= 90 && Math.abs(state.viewport.center.lng) <= 180);
+    }
+    function readSavedMapViews() {
+      try {
+        const raw = localStorage.getItem(savedViewsStorageKey);
+        if (!raw) return { version:1, activeId:'', views:[] };
+        const saved = JSON.parse(raw);
+        if (saved.version !== 1 || !Array.isArray(saved.views) || !saved.views.every(view => view && typeof view.id === 'string' && typeof view.name === 'string' && validSavedMapViewState(view.state)) || new Set(saved.views.map(view => view.id)).size !== saved.views.length) throw new Error('Invalid saved views');
+        return { version:1, activeId:saved.views.some(view => view.id === saved.activeId) ? saved.activeId : '', views:saved.views };
+      } catch { savedViewsReadFailed = true; return { version:1, activeId:'', views:[] }; }
+    }
+    function savedViewMessage(key, detail = '') {
+      const message = document.querySelector('#savedViewMessage');
+      message.dataset.messageKey = key;
+      message.dataset.detail = detail;
+      message.textContent = `${t(key)}${detail ? ` ${detail}` : ''}`;
+    }
+    function renderSavedMapViews() {
+      const select = document.querySelector('#savedViewSelect');
+      select.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = t('chooseView');
+      placeholder.disabled = true;
+      select.appendChild(placeholder);
+      savedMapViews.views.forEach(view => {
+        const option = document.createElement('option');
+        option.value = view.id;
+        option.textContent = view.name;
+        select.appendChild(option);
+      });
+      select.value = selectedSavedViewId;
+      select.setAttribute('aria-label', t('savedViews'));
+      const available = !cloudViewsBusy && (!cloudViews?.required || cloudViewsReady);
+      select.disabled = !map || !savedMapViews.views.length || !available;
+      document.querySelector('#saveNewView').disabled = !map || !available;
+      const selected = savedMapViews.views.some(view => view.id === selectedSavedViewId);
+      document.querySelector('#updateSavedView').disabled = !map || !selected || !available;
+      document.querySelector('#openSavedView').disabled = !map || !selected || !available;
+      document.querySelector('#deleteSavedView').disabled = !selected || !available;
+      document.querySelector('#importMapViews').disabled = !map || !available;
+      const accountLink = document.querySelector('#cloudAccountLink');
+      accountLink.textContent = t(cloudViews?.required ? cloudViewsReady ? 'cloudSignOut' : 'cloudSignIn' : 'cloudAccount');
+      accountLink.href = cloudViews?.required ? cloudViewsReady ? '/signout-with-chatgpt?return_to=/' : '/signin-with-chatgpt?return_to=/map.html' : cloudViews?.onlineUrl || '#';
+      document.querySelector('#cloudViewStatus').textContent = cloudViews?.required ? cloudViewsReady ? `${t('cloudConnected')}: ${cloudViews.user?.name || cloudViews.user?.email || ''}` : t('cloudLoading') : t('cloudLocal');
+      document.querySelector('#retryCloudViews').hidden = !cloudViews?.required || cloudViewsReady;
+      document.querySelector('[data-i18n="savedViewsHint"]').textContent = t(cloudViews?.required ? 'cloudHint' : 'savedViewsHint');
+      document.querySelector('#savedViewName').setAttribute('aria-label', t('viewName'));
+      const message = document.querySelector('#savedViewMessage');
+      if (message.dataset.messageKey) message.textContent = `${t(message.dataset.messageKey)}${message.dataset.detail ? ` ${message.dataset.detail}` : ''}`;
+    }
+    async function persistSavedMapViews(next) {
+      if (cloudViews?.required) {
+        if (!cloudViewsReady || cloudViewsBusy) { savedViewMessage('cloudError'); return false; }
+        cloudViewsBusy = true;
+        renderSavedMapViews();
+        try {
+          savedMapViews = await cloudViews.save(savedMapViews,next);
+          try { localStorage.setItem(savedViewsStorageKey,JSON.stringify(savedMapViews)); } catch {}
+          return true;
+        } catch (error) {
+          if (error.status === 409) {
+            try { savedMapViews=await cloudViews.load(); } catch {}
+            savedViewMessage('cloudConflict');
+          } else savedViewMessage('cloudError');
+          return false;
+        } finally { cloudViewsBusy=false; renderSavedMapViews(); }
+      }
+      try { localStorage.setItem(savedViewsStorageKey, JSON.stringify(next)); }
+      catch { savedViewMessage('viewStorageError'); return false; }
+      savedMapViews = next;
+      savedViewsReadFailed = false;
+      return true;
+    }
+    async function initializeCloudViews() {
+      if (!cloudViews?.required) return true;
+      try {
+        const saved=await cloudViews.load();
+        if (!saved.views.every(view=>validSavedMapViewState(view.state))) throw new Error('Invalid saved views');
+        savedMapViews=saved;
+        selectedSavedViewId=saved.activeId;
+        cloudViewsReady=true;
+        try { localStorage.setItem(savedViewsStorageKey,JSON.stringify(saved)); } catch {}
+        renderSavedMapViews();
+        return true;
+      } catch {
+        cloudViewsReady=false;
+        renderSavedMapViews();
+        document.querySelector('#cloudViewStatus').textContent=t('cloudError');
+        savedViewMessage('cloudError');
+        return false;
+      }
+    }
+    async function refreshCloudViewList() {
+      if (!cloudViews?.required || !cloudViewsReady || cloudViewsBusy || cloudRefreshInProgress || document.hidden) return;
+      cloudRefreshInProgress=true;
+      const previousLibrary=savedMapViews;
+      try {
+        const saved=await cloudViews.load();
+        if (cloudViewsBusy || savedMapViews!==previousLibrary) return;
+        if (!saved.views.every(view=>validSavedMapViewState(view.state))) return;
+        const before=savedMapViews.views.map(view=>[view.id,view.version]);
+        const after=saved.views.map(view=>[view.id,view.version]);
+        if (JSON.stringify(before)!==JSON.stringify(after)) {
+          savedMapViews=saved;
+          if (!saved.views.some(view=>view.id===selectedSavedViewId)) selectedSavedViewId='';
+          renderSavedMapViews();
+          savedViewMessage('cloudListUpdated');
+        }
+      } catch {} finally {cloudRefreshInProgress=false;}
+    }
+    function exportSavedMapViews() {
+      const blob=new Blob([JSON.stringify(savedMapViews,null,2)],{type:'application/json'});
+      const link=document.createElement('a');
+      const url=URL.createObjectURL(blob);
+      link.href=url;
+      link.download='map-views.json';
+      link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    async function importSavedMapViews(file) {
+      if (!file || file.size>5*1024*1024) {savedViewMessage('importViewsError');return;}
+      try {
+        const imported=JSON.parse(await file.text());
+        if (imported.version!==1 || !Array.isArray(imported.views) || !imported.views.every(view=>typeof view.name==='string' && validSavedMapViewState(view.state))) throw new Error('Invalid import');
+        const names=new Set(savedMapViews.views.map(view=>view.name.toLowerCase()));
+        const views=imported.views.map(view=>{
+          const original=view.name.trim().slice(0,70)||t('savedViews');
+          let name=original, suffix=2;
+          while(names.has(name.toLowerCase())) name=`${original} (${suffix++})`;
+          names.add(name.toLowerCase());
+          return {id:crypto.randomUUID(),name,state:view.state,savedAt:new Date().toISOString()};
+        });
+        if (!await persistSavedMapViews({...savedMapViews,views:[...savedMapViews.views,...views]})) return;
+        renderSavedMapViews();
+        savedViewMessage('importViewsDone');
+      } catch {savedViewMessage('importViewsError');}
+    }
+    function savedLocationReference(location) {
+      return { name:location.name, project:location.project || '', lat:location.lat, lng:location.lng };
+    }
+    function findSavedLocation(reference) {
+      if (!reference || typeof reference.name !== 'string') return null;
+      const normalize = value => String(value || '').trim().toLowerCase();
+      const matches = locations.filter(location => normalize(location.name) === normalize(reference.name) && (!reference.project || normalize(location.project) === normalize(reference.project)));
+      const exact = matches.filter(location => Math.abs(location.lat - reference.lat) < .000001 && Math.abs(location.lng - reference.lng) < .000001);
+      return exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : null;
+    }
+    function savedMapPoint(point) {
+      if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng) || Math.abs(point.lat) > 90 || Math.abs(point.lng) > 180) return null;
+      return { lat:point.lat, lng:point.lng, name:String(point.name || ''), address:String(point.address || ''), mapsUri:String(point.mapsUri || ''), routeLabel:String(point.routeLabel || point.name || ''), hidden:!!point.hidden, markerColor:/^#[a-f0-9]{6}$/i.test(point.markerColor) ? point.markerColor : null };
+    }
+    function captureSavedMapView() {
+      return {
+        search:document.querySelector('#search').value,
+        toggles:Object.fromEntries([...document.querySelectorAll('.location-toggles input[type="checkbox"]')].map(input => [input.id, input.checked])),
+        filters:Object.fromEntries(filterFields.map(field => [field.key, [...document.querySelectorAll(`[data-filter-value="${field.key}"]:checked`)].map(input => input.value)])),
+        date:document.querySelector('#startAfterDate').value,
+        overrides:locations.filter(location => location.hidden || location.pinnedToMap || location.markerColor).map(location => ({ reference:savedLocationReference(location), hidden:!!location.hidden, pinnedToMap:!!location.pinnedToMap, markerColor:location.markerColor || null })),
+        added:addedLocations.map(savedMapPoint).filter(Boolean),
+        preview:savedMapPoint(externalSearchResult),
+        points:[...document.querySelectorAll('[data-route-point]')].map(input => {
+          const location = locations.find(item => item.name === input.value.trim());
+          return { value:input.value, reference:location ? savedLocationReference(location) : null, lat:input.dataset.routeLat, lng:input.dataset.routeLng };
+        }),
+        built:document.querySelector('.route').classList.contains('has-built-route'),
+        viewport:currentMapViewport()
+      };
+    }
+    function currentMapViewport() {
+      const center = map?.getCenter();
+      return center ? { center:{ lat:center.lat(), lng:center.lng() }, zoom:map.getZoom(), mapTypeId:map.getMapTypeId() } : null;
+    }
+    function restoreMapViewport(viewport) {
+      if (!viewport || !Number.isFinite(viewport.center?.lat) || !Number.isFinite(viewport.center?.lng)) return;
+      const options = { center:viewport.center };
+      if (Number.isFinite(viewport.zoom)) options.zoom = viewport.zoom;
+      if (['roadmap', 'satellite', 'terrain', 'hybrid'].includes(viewport.mapTypeId)) options.mapTypeId = viewport.mapTypeId;
+      map.setOptions(options);
+    }
+    async function saveNamedMapView(update = false) {
+      if (!map) return;
+      const existing = savedMapViews.views.find(view => view.id === selectedSavedViewId);
+      if (update && !existing) return;
+      const input = document.querySelector('#savedViewName');
+      const name = update ? existing.name : input.value.trim();
+      if (!name) { savedViewMessage('viewNameRequired'); input.focus(); return; }
+      if (!update && savedMapViews.views.some(view => view.name.toLowerCase() === name.toLowerCase())) { savedViewMessage('viewNameTaken'); return; }
+      const view = { id:update ? existing.id : crypto.randomUUID(), name, savedAt:new Date().toISOString(), state:captureSavedMapView(), ...(update ? {version:selectedSavedViewVersion} : {}) };
+      const views = update ? savedMapViews.views.map(item => item.id === view.id ? view : item) : [...savedMapViews.views, view];
+      if (!await persistSavedMapViews({ version:1, activeId:view.id, views })) return;
+      selectedSavedViewId = view.id;
+      selectedSavedViewVersion = savedMapViews.views.find(item=>item.id===view.id)?.version || 0;
+      input.value = '';
+      renderSavedMapViews();
+      savedViewMessage('viewSaved', name);
+    }
+    async function deleteNamedMapView() {
+      const selected = savedMapViews.views.find(view => view.id === selectedSavedViewId);
+      if (!selected || !window.confirm(`${t('confirmDeleteView')} «${selected.name}»?`)) return;
+      const views = savedMapViews.views.filter(view => view.id !== selected.id);
+      if (!await persistSavedMapViews({ version:1, activeId:'', views, deletedVersions:{[selected.id]:selectedSavedViewVersion} })) return;
+      selectedSavedViewId = '';
+      renderSavedMapViews();
+      savedViewMessage('viewDeleted');
+    }
+    async function openSavedMapView(id, startup = false) {
+      const view = savedMapViews.views.find(item => item.id === id);
+      if (!map || !view) return;
+      clearTimeout(undoTimer);
+      if (!startup) { undoHistory.push(captureUndoState()); if (undoHistory.length > 50) undoHistory.shift(); }
+      const saved = view.state;
+      let missing = 0, missingRoutePoints = 0;
+      const overrides = new Map();
+      saved.overrides.forEach(override => {
+        const location = findSavedLocation(override.reference);
+        if (location) overrides.set(location, override); else missing++;
+      });
+      const state = {
+        viewId:id,
+        viewVersion:view.version || 0,
+        search:typeof saved.search === 'string' ? saved.search : '',
+        checks:[...document.querySelectorAll('aside input[type="checkbox"]')].map(input => input.dataset.filterValue ? Array.isArray(saved.filters[input.dataset.filterValue]) && saved.filters[input.dataset.filterValue].includes(input.value) : saved.toggles[input.id] === true),
+        date:typeof saved.date === 'string' ? saved.date : '',
+        locations:locations.map(location => {
+          const override = overrides.get(location);
+          return { hidden:!!override?.hidden, pinnedToMap:!!override?.pinnedToMap, markerColor:/^#[a-f0-9]{6}$/i.test(override?.markerColor) ? override.markerColor : null };
+        }),
+        points:saved.points.map(point => {
+          if (!point.reference) return { value:String(point.value || ''), ...(point.lat !== undefined && point.lng !== undefined ? { lat:point.lat, lng:point.lng } : {}) };
+          const location = findSavedLocation(point.reference);
+          if (location) return { value:location.name, lat:String(location.lat), lng:String(location.lng) };
+          missingRoutePoints++;
+          return { value:'' };
+        }),
+        added:saved.added.map(savedMapPoint).filter(Boolean),
+        built:false,
+        result:escapeHtml(t('routeHint')),
+        viewport:saved.viewport
+      };
+      while (state.points.length < 2) state.points.push({ value:'' });
+      hotelMarkers.forEach(marker => marker.setMap(null));
+      hotelMarkers = [];
+      restoreMapState(state);
+      const preview = savedMapPoint(saved.preview);
+      if (preview) {
+        showExternalSearchResult({ name:preview.name, position:preview, address:preview.address, mapsUri:preview.mapsUri, zoomToLocation:false });
+        externalSearchResult.markerColor = preview.markerColor;
+        if (preview.markerColor) externalSearchMarker.setIcon({ ...externalSearchMarker.getIcon(), fillColor:preview.markerColor });
+        infoWindow.close();
+        restoreMapViewport(saved.viewport);
+      }
+      const remembered = await persistSavedMapViews({ ...savedMapViews, activeId:id });
+      renderSavedMapViews();
+      if (remembered) savedViewMessage(missingRoutePoints ? 'viewRouteMissing' : missing ? 'viewMissing' : 'viewLoaded', missingRoutePoints ? String(missingRoutePoints) : missing ? String(missing) : view.name);
+      undoBaseline = captureUndoState();
+      if (saved.built && !missingRoutePoints && selectedRoutePoints().length >= 2) {
+        await buildRouteOnMap({ preserveViewport:true });
+      }
+    }
+    document.querySelector('#saveNewView').addEventListener('click', () => saveNamedMapView());
+    document.querySelector('#updateSavedView').addEventListener('click', () => saveNamedMapView(true));
+    document.querySelector('#openSavedView').addEventListener('click',()=>openSavedMapView(selectedSavedViewId));
+    document.querySelector('#deleteSavedView').addEventListener('click', deleteNamedMapView);
+    document.querySelector('#savedViewSelect').addEventListener('change', event => openSavedMapView(event.target.value));
+    document.querySelector('#savedViewName').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); saveNamedMapView(); } });
+    document.querySelector('#exportMapViews').addEventListener('click',exportSavedMapViews);
+    document.querySelector('#importMapViews').addEventListener('click',()=>document.querySelector('#importMapViewsFile').click());
+    document.querySelector('#importMapViewsFile').addEventListener('change',async event=>{await importSavedMapViews(event.target.files[0]);event.target.value='';});
+    document.querySelector('#retryCloudViews').addEventListener('click',async()=>{if(await initializeCloudViews() && savedMapViews.activeId) await openSavedMapView(savedMapViews.activeId,true);});
+    window.addEventListener('focus',refreshCloudViewList);
+    document.addEventListener('visibilitychange',refreshCloudViewList);
     const undoHistory = [];
     let undoBaseline, undoTimer, restoringHistory = false, routeRequestVersion = 0;
     function captureUndoState() {
       const result = document.querySelector('#routeResult');
       return {
         search:document.querySelector('#search').value,
+        viewId:selectedSavedViewId,
+        viewVersion:selectedSavedViewVersion,
+        viewport:currentMapViewport(),
         checks:[...document.querySelectorAll('aside input[type="checkbox"]')].map(input => input.checked),
         date:document.querySelector('#startAfterDate')?.value || '',
         points:[...document.querySelectorAll('[data-route-point]')].map(input => ({ value:input.value, lat:input.dataset.routeLat, lng:input.dataset.routeLng })),
@@ -794,12 +1125,17 @@ const nameI = find(['name','название','локация','место','lin
         updateUndoButton();
       }, 0);
     }
-    function undoLastAction() {
+    async function undoLastAction() {
+      if (cloudViewsBusy) return;
       clearTimeout(undoTimer);
       const current = captureUndoState();
       if (undoBaseline && undoSignature(current) !== undoSignature(undoBaseline)) undoHistory.push(undoBaseline);
       const state = undoHistory.pop();
       if (!state) return;
+      restoreMapState(state);
+      await persistSavedMapViews({ ...savedMapViews, activeId:selectedSavedViewId });
+    }
+    function restoreMapState(state) {
       restoringHistory = true;
       routeRequestVersion++;
       try {
@@ -835,13 +1171,20 @@ const nameI = find(['name','название','локация','место','lin
         locationLabels.setEnabled(document.querySelector('#showLabelsToggle').checked);
         locationLabels.setCrewsEnabled(document.querySelector('#showCrewsToggle').checked);
         locationLabels.setNotesEnabled(document.querySelector('#showNotesToggle').checked);
-        document.querySelectorAll('[data-filter-value]').forEach(input => input.dispatchEvent(new Event('change')));
+        filterFields.forEach(field => document.querySelector(`[data-filter-value="${field.key}"]`)?.dispatchEvent(new Event('change')));
         clearBuiltRoute();
-        if (state.built && state.directions) directionsRenderer.setDirections(state.directions);
+        if (state.built && state.directions) { directionsRenderer.setOptions({ preserveViewport:!!state.viewport }); directionsRenderer.setDirections(state.directions); }
         document.querySelector('.route').classList.toggle('has-built-route', state.built);
         document.querySelector('#routeResult').classList.toggle('has-time', state.built);
         document.querySelector('#routeResult').innerHTML = state.result;
         renderList(state.search);
+        infoWindow.close();
+        document.querySelector('#searchSuggestions').classList.remove('visible');
+        document.querySelectorAll('.route-suggestions').forEach(node => node.remove());
+        restoreMapViewport(state.viewport);
+        selectedSavedViewId = savedMapViews.views.some(view => view.id === state.viewId) ? state.viewId : '';
+        selectedSavedViewVersion = state.viewVersion || 0;
+        renderSavedMapViews();
         undoBaseline = captureUndoState();
       } finally { restoringHistory = false; updateUndoButton(); }
     }
@@ -857,10 +1200,18 @@ const nameI = find(['name','название','локация','место','lin
       if (!event.target.closest('#undoAction')) saveUndoState();
     }));
     const originalInitMap = initMap;
-    initMap = function() { originalInitMap(); undoBaseline = captureUndoState(); updateUndoButton(); };
+    initMap = async function() {
+      originalInitMap();
+      if (!await initializeCloudViews()) return;
+      undoBaseline = captureUndoState();
+      updateUndoButton();
+      renderSavedMapViews();
+      if (savedMapViews.activeId) openSavedMapView(savedMapViews.activeId, true);
+    };
     const originalApplyLanguage = applyLanguage;
     applyLanguage = function() {
       originalApplyLanguage();
+      renderSavedMapViews();
       const reverseButton = document.querySelector('#reverseRoute');
       reverseButton.title = language === 'ru' ? 'Развернуть маршрут' : 'Reverse route';
       reverseButton.setAttribute('aria-label', reverseButton.title);
@@ -875,6 +1226,7 @@ const nameI = find(['name','название','локация','место','lin
     addCurrentSearchToMap = async function() { await originalAddCurrentSearchToMap(); saveUndoState(); };
     updateLegendShapes();
     applyLanguage();
+    if (savedViewsReadFailed) savedViewMessage('viewReadError');
     loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = language === 'ru' ? 'Таблица недоступна — показан пример' : 'Sheet is unavailable — showing an example'; renderList(); loadMapsScript(); });
   </script>
 </body>
