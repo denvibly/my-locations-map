@@ -802,6 +802,8 @@ const nameI = find(['name','название','локация','место','lin
     const cloudViews = window.mapViewsCloud;
     Object.assign(translations.ru,{cloudPopupBlocked:'Разрешите открытие окна входа и нажмите «Войти» ещё раз.',cloudNeedsSignIn:'Войдите в аккаунт для общих сохранений. Карта остаётся на этом адресе.'});
     Object.assign(translations.en,{cloudPopupBlocked:'Allow the sign-in window and click Sign in again.',cloudNeedsSignIn:'Sign in for account-backed views. The map stays at this address.'});
+    translations.ru.cloudCached='Показана последняя загруженная копия вида. Для общих сохранений войдите в аккаунт.';
+    translations.en.cloudCached='Showing the last loaded copy. Sign in to use account-backed views.';
     translations.ru.openView='Открыть';
     translations.en.openView='Open';
     let cloudViewsReady = false, cloudViewsBusy = false;
@@ -916,8 +918,9 @@ const nameI = find(['name','название','локация','место','lin
       } catch {
         cloudViewsReady=false;
         renderSavedMapViews();
-        document.querySelector('#cloudViewStatus').textContent=t('cloudError');
-        savedViewMessage('cloudError');
+        const messageKey=cloudViews.standalone && !cloudViews.user ? 'cloudNeedsSignIn' : 'cloudError';
+        document.querySelector('#cloudViewStatus').textContent=t(messageKey);
+        savedViewMessage(messageKey);
         return false;
       } finally {cloudViewsInitializing=false;}
     }
@@ -1034,7 +1037,7 @@ const nameI = find(['name','название','локация','место','lin
       renderSavedMapViews();
       savedViewMessage('viewDeleted');
     }
-    async function openSavedMapView(id, startup = false) {
+    async function openSavedMapView(id, startup = false, cached = false) {
       const view = savedMapViews.views.find(item => item.id === id);
       if (!map || !view) return;
       clearTimeout(undoTimer);
@@ -1080,8 +1083,9 @@ const nameI = find(['name','название','локация','место','lin
         infoWindow.close();
         restoreMapViewport(saved.viewport);
       }
-      const remembered = await persistSavedMapViews({ ...savedMapViews, activeId:id });
+      const remembered = !cached && await persistSavedMapViews({ ...savedMapViews, activeId:id });
       renderSavedMapViews();
+      if (cached) savedViewMessage('cloudCached');
       if (remembered) savedViewMessage(missingRoutePoints ? 'viewRouteMissing' : missing ? 'viewMissing' : 'viewLoaded', missingRoutePoints ? String(missingRoutePoints) : missing ? String(missing) : view.name);
       undoBaseline = captureUndoState();
       if (saved.built && !missingRoutePoints && selectedRoutePoints().length >= 2) {
@@ -1233,6 +1237,7 @@ const nameI = find(['name','название','локация','место','lin
       originalInitMap();
       undoBaseline = captureUndoState();
       renderSavedMapViews();
+      if (cloudViews?.standalone && savedMapViews.activeId) await openSavedMapView(savedMapViews.activeId,true,true);
       if (!await initializeCloudViews()) return;
       undoBaseline = captureUndoState();
       updateUndoButton();
