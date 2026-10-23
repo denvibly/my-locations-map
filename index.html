@@ -233,7 +233,7 @@
     <div class="legend"><b data-i18n="projects">Проекты:</b><span><i class="legend-icon legend-red"></i><b data-i18n="completed">Завершено</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-purple"></i><b data-i18n="pending">На паузе</b></span><span><i class="legend-icon legend-black"></i><b data-i18n="notStarted">Не начато</b></span><span><i class="legend-icon legend-lime"></i><b data-i18n="active">Активно</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-added"></i><b data-i18n="added">Добавлено</b></span></div>
   </main>
 
-  <script src="map-views-cloud.js?v=2"></script>
+  <script src="map-views-cloud.js?v=3"></script>
   <script>
     // Замените два значения ниже на свои данные.
     const CONFIG = {
@@ -800,10 +800,13 @@ const nameI = find(['name','название','локация','место','lin
     }
     const savedViewsStorageKey = 'locations-map-saved-views-v1';
     const cloudViews = window.mapViewsCloud;
+    Object.assign(translations.ru,{cloudPopupBlocked:'Разрешите открытие окна входа и нажмите «Войти» ещё раз.',cloudNeedsSignIn:'Войдите в аккаунт для общих сохранений. Карта остаётся на этом адресе.'});
+    Object.assign(translations.en,{cloudPopupBlocked:'Allow the sign-in window and click Sign in again.',cloudNeedsSignIn:'Sign in for account-backed views. The map stays at this address.'});
     translations.ru.openView='Открыть';
     translations.en.openView='Open';
     let cloudViewsReady = false, cloudViewsBusy = false;
     let cloudRefreshInProgress = false;
+    let cloudViewsInitializing = false;
     let selectedSavedViewVersion = 0;
     let savedViewsReadFailed = false;
     let savedMapViews = readSavedMapViews();
@@ -858,7 +861,8 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#importMapViews').disabled = !map || !available;
       const accountLink = document.querySelector('#cloudAccountLink');
       accountLink.textContent = t(cloudViews?.required ? cloudViewsReady ? 'cloudSignOut' : 'cloudSignIn' : 'cloudAccount');
-      accountLink.href = cloudViews?.required ? cloudViewsReady ? cloudViews.onlineUrl+'/signout-with-chatgpt?return_to=/' : cloudViews.onlineUrl+'/signin-with-chatgpt?return_to=/map' : cloudViews?.onlineUrl+'/map' || '#';
+      accountLink.href = cloudViews?.required ? cloudViewsReady ? cloudViews.onlineUrl+'/signout-with-chatgpt?return_to=/bridge' : cloudViews.onlineUrl+'/bridge' : cloudViews?.onlineUrl+'/map' || '#';
+      accountLink.target = cloudViews?.standalone ? 'locations-map-account' : '_top';
       document.querySelector('#cloudViewStatus').textContent = cloudViews?.required ? cloudViewsReady ? `${t('cloudConnected')}: ${cloudViews.user?.name || cloudViews.user?.email || ''}` : t('cloudLoading') : t('cloudLocal');
       document.querySelector('#retryCloudViews').hidden = !cloudViews?.required || cloudViewsReady;
       document.querySelector('[data-i18n="savedViewsHint"]').textContent = t(cloudViews?.required ? 'cloudHint' : 'savedViewsHint');
@@ -898,6 +902,8 @@ const nameI = find(['name','название','локация','место','lin
     }
     async function initializeCloudViews() {
       if (!cloudViews?.required) return true;
+      if (cloudViewsInitializing) return false;
+      cloudViewsInitializing=true;
       try {
         const saved=await cloudViews.load();
         if (!saved.views.every(view=>validSavedMapViewState(view.state))) throw new Error('Invalid saved views');
@@ -913,7 +919,7 @@ const nameI = find(['name','название','локация','место','lin
         document.querySelector('#cloudViewStatus').textContent=t('cloudError');
         savedViewMessage('cloudError');
         return false;
-      }
+      } finally {cloudViewsInitializing=false;}
     }
     async function refreshCloudViewList() {
       if (!cloudViews?.required || !cloudViewsReady || cloudViewsBusy || cloudRefreshInProgress || document.hidden) return;
@@ -1092,6 +1098,22 @@ const nameI = find(['name','название','локация','место','lin
     document.querySelector('#importMapViews').addEventListener('click',()=>document.querySelector('#importMapViewsFile').click());
     document.querySelector('#importMapViewsFile').addEventListener('change',async event=>{await importSavedMapViews(event.target.files[0]);event.target.value='';});
     document.querySelector('#retryCloudViews').addEventListener('click',async()=>{if(await initializeCloudViews() && savedMapViews.activeId) await openSavedMapView(savedMapViews.activeId,true);});
+    document.querySelector('#cloudAccountLink').addEventListener('click',event=>{
+      if (!cloudViews?.standalone) return;
+      event.preventDefault();
+      if (!cloudViews.connect(cloudViewsReady)) savedViewMessage('cloudPopupBlocked');
+      else document.querySelector('#cloudViewStatus').textContent=t('cloudLoading');
+    });
+    window.addEventListener('map-cloud-connected',async()=>{
+      if (!map || cloudViewsReady || cloudViewsInitializing) return;
+      const hasEdits=undoHistory.length>0;
+      if (await initializeCloudViews() && savedMapViews.activeId && !hasEdits) await openSavedMapView(savedMapViews.activeId,true);
+    });
+    window.addEventListener('map-cloud-disconnected',()=>{
+      cloudViewsReady=false;
+      renderSavedMapViews();
+      document.querySelector('#cloudViewStatus').textContent=t('cloudNeedsSignIn');
+    });
     window.addEventListener('focus',refreshCloudViewList);
     document.addEventListener('visibilitychange',refreshCloudViewList);
     const undoHistory = [];
@@ -1209,6 +1231,8 @@ const nameI = find(['name','название','локация','место','lin
     const originalInitMap = initMap;
     initMap = async function() {
       originalInitMap();
+      undoBaseline = captureUndoState();
+      renderSavedMapViews();
       if (!await initializeCloudViews()) return;
       undoBaseline = captureUndoState();
       updateUndoButton();
