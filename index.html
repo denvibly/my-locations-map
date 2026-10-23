@@ -233,7 +233,7 @@
     <div class="legend"><b data-i18n="projects">Проекты:</b><span><i class="legend-icon legend-red"></i><b data-i18n="completed">Завершено</b></span><span><i class="legend-icon legend-yellow"></i><b>Issue</b></span><span><i class="legend-icon legend-purple"></i><b data-i18n="pending">На паузе</b></span><span><i class="legend-icon legend-black"></i><b data-i18n="notStarted">Не начато</b></span><span><i class="legend-icon legend-lime"></i><b data-i18n="active">Активно</b></span><span><i class="legend-icon legend-blue"></i><b>WH</b></span><span><i class="legend-icon legend-added"></i><b data-i18n="added">Добавлено</b></span></div>
   </main>
 
-  <script src="map-views-cloud.js"></script>
+  <script src="map-views-cloud.js?v=2"></script>
   <script>
     // Замените два значения ниже на свои данные.
     const CONFIG = {
@@ -858,7 +858,7 @@ const nameI = find(['name','название','локация','место','lin
       document.querySelector('#importMapViews').disabled = !map || !available;
       const accountLink = document.querySelector('#cloudAccountLink');
       accountLink.textContent = t(cloudViews?.required ? cloudViewsReady ? 'cloudSignOut' : 'cloudSignIn' : 'cloudAccount');
-      accountLink.href = cloudViews?.required ? cloudViewsReady ? '/signout-with-chatgpt?return_to=/' : '/signin-with-chatgpt?return_to=/map.html' : cloudViews?.onlineUrl || '#';
+      accountLink.href = cloudViews?.required ? cloudViewsReady ? cloudViews.onlineUrl+'/signout-with-chatgpt?return_to=/' : cloudViews.onlineUrl+'/signin-with-chatgpt?return_to=/map' : cloudViews?.onlineUrl+'/map' || '#';
       document.querySelector('#cloudViewStatus').textContent = cloudViews?.required ? cloudViewsReady ? `${t('cloudConnected')}: ${cloudViews.user?.name || cloudViews.user?.email || ''}` : t('cloudLoading') : t('cloudLocal');
       document.querySelector('#retryCloudViews').hidden = !cloudViews?.required || cloudViewsReady;
       document.querySelector('[data-i18n="savedViewsHint"]').textContent = t(cloudViews?.required ? 'cloudHint' : 'savedViewsHint');
@@ -873,7 +873,7 @@ const nameI = find(['name','название','локация','место','lin
         renderSavedMapViews();
         try {
           savedMapViews = await cloudViews.save(savedMapViews,next);
-          try { localStorage.setItem(savedViewsStorageKey,JSON.stringify(savedMapViews)); } catch {}
+          cacheCloudViews(savedMapViews);
           return true;
         } catch (error) {
           if (error.status === 409) {
@@ -889,6 +889,13 @@ const nameI = find(['name','название','локация','место','lin
       savedViewsReadFailed = false;
       return true;
     }
+    function cacheCloudViews(saved) {
+      try {
+        const raw=JSON.stringify(saved);
+        localStorage.setItem(savedViewsStorageKey,raw);
+        localStorage.setItem(savedViewsStorageKey+'-connected',raw);
+      } catch {}
+    }
     async function initializeCloudViews() {
       if (!cloudViews?.required) return true;
       try {
@@ -897,7 +904,7 @@ const nameI = find(['name','название','локация','место','lin
         savedMapViews=saved;
         selectedSavedViewId=saved.activeId;
         cloudViewsReady=true;
-        try { localStorage.setItem(savedViewsStorageKey,JSON.stringify(saved)); } catch {}
+        cacheCloudViews(saved);
         renderSavedMapViews();
         return true;
       } catch {
@@ -1227,7 +1234,7 @@ const nameI = find(['name','название','локация','место','lin
     updateLegendShapes();
     applyLanguage();
     if (savedViewsReadFailed) savedViewMessage('viewReadError');
-    loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = language === 'ru' ? 'Таблица недоступна — показан пример' : 'Sheet is unavailable — showing an example'; renderList(); loadMapsScript(); });
+    if (!cloudViews?.start()) loadLocations().then(data => { locations = data; loadMapsScript(); }).catch(error => { locations = fallbackLocations; document.querySelector('#status').textContent = language === 'ru' ? 'Таблица недоступна — показан пример' : 'Sheet is unavailable — showing an example'; renderList(); loadMapsScript(); });
   </script>
 </body>
 </html>
