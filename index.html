@@ -200,7 +200,7 @@
         <div class="saved-view-create"><input id="savedViewName" maxlength="80" data-i18n-placeholder="viewName" placeholder="Название нового вида"><button id="saveNewView" type="button" data-i18n="saveView" disabled>Сохранить</button></div>
         <div class="saved-view-actions"><button id="openSavedView" type="button" data-i18n="openView" disabled>Открыть</button><button id="updateSavedView" type="button" data-i18n="updateView" disabled>Обновить</button><button id="deleteSavedView" class="saved-view-delete" type="button" data-i18n="deleteView" disabled>Удалить</button></div>
         <div class="saved-view-transfer"><button id="exportMapViews" type="button" data-i18n="exportViews">Скачать виды</button><button id="importMapViews" type="button" data-i18n="importViews">Перенести из файла</button><input id="importMapViewsFile" type="file" accept=".json,application/json" hidden></div>
-        <p data-i18n="savedViewsHint">Последний открытый вид загрузится при следующем открытии. Чтобы сохранить правки, нажмите «Обновить».</p>
+        <p data-i18n="savedViewsHint">По умолчанию открывается обычная карта. Выберите сохранённый вид вручную. Чтобы сохранить правки, нажмите «Обновить».</p>
         <p id="savedViewMessage" class="saved-view-message" role="status" aria-live="polite"></p>
       </details>
       <div class="location-toggles">
@@ -244,10 +244,10 @@
       ru: { locationsHeading:'Локации', searchPlaceholder:'Поиск сайта, адреса или координат…', addToMap:'Добавить на карту', filters:'Фильтры', showLabels:'Показать ярлыки', showNotes:'Показать заметки', showCrews:'Показать бригадиров', activeLocations:'Активные', hide:'Скрыть:', notStarted:'Не начато', warehouses:'Склады', issues:'Проблемные', showAll:'Показать все локации', route:'Маршрут', buildRoute:'Построить маршрут', routeHint:'Выберите точки по порядку посещения.', dataRefreshNote:'Данные обновляются при каждом открытии страницы.', projects:'Проекты:', completed:'Завершено', pending:'На паузе', active:'Активно', added:'Добавлено', status:'Статус', locationType:'Тип локации', crewLead:'Бригадир', marketState:'Рынок/оператор', custom:'Другое', project:'Проект #', startAfter:'Старт после', filterSearch:'Поиск', routePoint:'Точка маршрута', addMore:'+ Ещё', addToRoute:'Добавить в маршрут', openMaps:'Открыть в Google Maps', hideButton:'Скрыть', address:'Адрес', week:'Неделя', drivingTime:'Время в пути', noResults:'Ничего не найдено.', clearRoute:'Маршрут очищен с карты.' },
       en: { locationsHeading:'Locations', searchPlaceholder:'Search site, address, or coordinates…', addToMap:'Add to map', filters:'Filters', showLabels:'Show Labels', showNotes:'Show Notes', showCrews:'Show Crews', activeLocations:'Active Locations', hide:'Hide:', notStarted:'Not Started', warehouses:'WH', issues:'I,P,H', showAll:'Show all locations', route:'Route', buildRoute:'Build route', routeHint:'Select points in visiting order.', dataRefreshNote:'Data refreshes every time the page opens.', projects:'Projects:', completed:'Completed', pending:'Pending / On-Hold', active:'Active', added:'Added', status:'Status', locationType:'Location Type', crewLead:'Crew Lead', marketState:'Market/Carrier States', custom:'Custom', project:'Project #', startAfter:'Start after', filterSearch:'Search', routePoint:'Route point', addMore:'+ Add more', addToRoute:'Add to route', openMaps:'Open in Google Maps', hideButton:'Hide', address:'Address', week:'Week', drivingTime:'Driving time', noResults:'No locations found.', clearRoute:'Route cleared from the map.' }
     };
-    Object.assign(translations.ru, { savedViews:'Виды карты', viewName:'Название нового вида', saveView:'Сохранить', updateView:'Обновить', deleteView:'Удалить', chooseView:'Выберите сохранённый вид', savedViewsHint:'Последний открытый вид загрузится при следующем открытии. Чтобы сохранить правки, нажмите «Обновить».', viewNameRequired:'Введите название вида.', viewNameTaken:'Такое название уже есть. Выберите его и нажмите «Обновить» или введите другое.', viewSaved:'Вид сохранён.', viewLoaded:'Вид открыт.', viewDeleted:'Сохранённый вид удалён.', viewStorageError:'Не удалось сохранить виды в этом браузере. Проверьте доступ к хранилищу и свободное место.', viewReadError:'Не удалось прочитать сохранённые виды. Данные в хранилище не изменены.', confirmDeleteView:'Удалить сохранённый вид', viewMissing:'Некоторые локации больше не найдены в таблице:', viewRouteMissing:'Некоторые точки маршрута больше не найдены в таблице:' });
-    Object.assign(translations.en, { savedViews:'Map views', viewName:'New view name', saveView:'Save', updateView:'Update', deleteView:'Delete', chooseView:'Choose a saved view', savedViewsHint:'The last opened view loads next time. Click Update to save your changes.', viewNameRequired:'Enter a view name.', viewNameTaken:'This name already exists. Select it and click Update, or choose another name.', viewSaved:'View saved.', viewLoaded:'View opened.', viewDeleted:'Saved view deleted.', viewStorageError:'Could not save views in this browser. Check storage access and available space.', viewReadError:'Could not read saved views. Stored data has not been changed.', confirmDeleteView:'Delete saved view', viewMissing:'Some locations are no longer in the sheet:', viewRouteMissing:'Some route points are no longer in the sheet:' });
-    Object.assign(translations.ru, { cloudAccount:'Войти в онлайн-карту', cloudSignOut:'Выйти', cloudLocal:'Виды пока только в этом браузере.', cloudLoading:'Подключаю ваши виды…', cloudConnected:'Сохранение в аккаунте', cloudError:'Нет соединения с хранилищем. Изменения на карте остаются на экране. Повторите сохранение после подключения.', cloudConflict:'Этот вид изменён на другом устройстве. Список обновлён; ваши правки остались на карте. Откройте свежий вид или сохраните свои правки под новым названием.', cloudSignIn:'Войти через ChatGPT', cloudHint:'Виды хранятся в вашем аккаунте и доступны на всех устройствах. Нажимайте «Обновить», чтобы сохранить правки.', exportViews:'Скачать виды', importViews:'Перенести из файла', importViewsDone:'Виды из файла сохранены.', importViewsError:'Не удалось прочитать файл видов. Выберите JSON-файл, скачанный с этой карты.', cloudListUpdated:'Список видов обновлён из аккаунта. Выберите вид, чтобы открыть его.' });
-    Object.assign(translations.en, { cloudAccount:'Sign in to online map', cloudSignOut:'Sign out', cloudLocal:'Views are only in this browser for now.', cloudLoading:'Connecting to your views…', cloudConnected:'Saved in your account', cloudError:'Storage connection unavailable. Your map changes are still on screen. Reconnect and save again.', cloudConflict:'This view changed on another device. The list has been refreshed; your edits are still on the map. Open the latest view or save your edits under a new name.', cloudSignIn:'Sign in with ChatGPT', cloudHint:'Views are stored in your account and available on all devices. Click Update to save your edits.', exportViews:'Download views', importViews:'Import file', importViewsDone:'Imported views saved.', importViewsError:'Could not read this views file. Choose a JSON file downloaded from this map.', cloudListUpdated:'The view list was refreshed from your account. Select a view to open it.' });
+    Object.assign(translations.ru, { savedViews:'Виды карты', viewName:'Название нового вида', saveView:'Сохранить', updateView:'Обновить', deleteView:'Удалить', chooseView:'Выберите сохранённый вид', savedViewsHint:'По умолчанию открывается обычная карта. Выберите сохранённый вид вручную. Чтобы сохранить правки, нажмите «Обновить».', viewNameRequired:'Введите название вида.', viewNameTaken:'Такое название уже есть. Выберите его и нажмите «Обновить» или введите другое.', viewSaved:'Вид сохранён.', viewLoaded:'Вид открыт.', viewDeleted:'Сохранённый вид удалён.', viewStorageError:'Не удалось сохранить виды в этом браузере. Проверьте доступ к хранилищу и свободное место.', viewReadError:'Не удалось прочитать сохранённые виды. Данные в хранилище не изменены.', confirmDeleteView:'Удалить сохранённый вид', viewMissing:'Некоторые локации больше не найдены в таблице:', viewRouteMissing:'Некоторые точки маршрута больше не найдены в таблице:' });
+    Object.assign(translations.en, { savedViews:'Map views', viewName:'New view name', saveView:'Save', updateView:'Update', deleteView:'Delete', chooseView:'Choose a saved view', savedViewsHint:'The default map opens each time. Choose a saved view manually. Click Update to save your changes.', viewNameRequired:'Enter a view name.', viewNameTaken:'This name already exists. Select it and click Update, or choose another name.', viewSaved:'View saved.', viewLoaded:'View opened.', viewDeleted:'Saved view deleted.', viewStorageError:'Could not save views in this browser. Check storage access and available space.', viewReadError:'Could not read saved views. Stored data has not been changed.', confirmDeleteView:'Delete saved view', viewMissing:'Some locations are no longer in the sheet:', viewRouteMissing:'Some route points are no longer in the sheet:' });
+    Object.assign(translations.ru, { cloudAccount:'Войти в онлайн-карту', cloudSignOut:'Выйти', cloudLocal:'Виды пока только в этом браузере.', cloudLoading:'Подключаю ваши виды…', cloudConnected:'Сохранение в аккаунте', cloudError:'Нет соединения с хранилищем. Изменения на карте остаются на экране. Повторите сохранение после подключения.', cloudConflict:'Этот вид изменён на другом устройстве. Список обновлён; ваши правки остались на карте. Откройте свежий вид или сохраните свои правки под новым названием.', cloudSignIn:'Войти через ChatGPT', cloudHint:'По умолчанию открывается обычная карта. Виды из аккаунта открываются вручную. Нажимайте «Обновить», чтобы сохранить правки.', exportViews:'Скачать виды', importViews:'Перенести из файла', importViewsDone:'Виды из файла сохранены.', importViewsError:'Не удалось прочитать файл видов. Выберите JSON-файл, скачанный с этой карты.', cloudListUpdated:'Список видов обновлён из аккаунта. Выберите вид, чтобы открыть его.' });
+    Object.assign(translations.en, { cloudAccount:'Sign in to online map', cloudSignOut:'Sign out', cloudLocal:'Views are only in this browser for now.', cloudLoading:'Connecting to your views…', cloudConnected:'Saved in your account', cloudError:'Storage connection unavailable. Your map changes are still on screen. Reconnect and save again.', cloudConflict:'This view changed on another device. The list has been refreshed; your edits are still on the map. Open the latest view or save your edits under a new name.', cloudSignIn:'Sign in with ChatGPT', cloudHint:'The default map opens each time. Open account-backed views manually. Click Update to save your edits.', exportViews:'Download views', importViews:'Import file', importViewsDone:'Imported views saved.', importViewsError:'Could not read this views file. Choose a JSON file downloaded from this map.', cloudListUpdated:'The view list was refreshed from your account. Select a view to open it.' });
     let language = 'ru';
     try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
@@ -754,7 +754,7 @@ const nameI = find(['name','название','локация','место','lin
     function addAddedLocationToRoute(index) { addRoutePoint(addedLocations[index]); }
     async function findHotelsNearLocation(location) { hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } }
     function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`pinLocationToMap(${index})`)}<button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button><button type="button" onclick="routeToIntekOffice(${index})">Intek</button>${String(x.locationType || '').trim().toUpperCase() !== 'WH' ? `<button type="button" onclick="routeToWarehouse(${index})">WH</button>` : ''}${markerColorControl('local', index, x)}</div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
-    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length && !savedMapViews.activeId) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
+    function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function coordinatesFromQuery(query) { const match = String(query).trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/); if (!match) return null; const lat = Number(match[1]); const lng = Number(match[2]); return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; }
     function clearExternalSearchMarker() { if (externalSearchMarker) externalSearchMarker.setMap(null); externalSearchMarker = null; externalSearchResult = null; }
@@ -802,8 +802,6 @@ const nameI = find(['name','название','локация','место','lin
     const cloudViews = window.mapViewsCloud;
     Object.assign(translations.ru,{cloudPopupBlocked:'Разрешите открытие окна входа и нажмите «Войти» ещё раз.',cloudNeedsSignIn:'Войдите в аккаунт для общих сохранений. Карта остаётся на этом адресе.'});
     Object.assign(translations.en,{cloudPopupBlocked:'Allow the sign-in window and click Sign in again.',cloudNeedsSignIn:'Sign in for account-backed views. The map stays at this address.'});
-    translations.ru.cloudCached='Показана последняя загруженная копия вида. Для общих сохранений войдите в аккаунт.';
-    translations.en.cloudCached='Showing the last loaded copy. Sign in to use account-backed views.';
     translations.ru.openView='Открыть';
     translations.en.openView='Open';
     let cloudViewsReady = false, cloudViewsBusy = false;
@@ -812,7 +810,7 @@ const nameI = find(['name','название','локация','место','lin
     let selectedSavedViewVersion = 0;
     let savedViewsReadFailed = false;
     let savedMapViews = readSavedMapViews();
-    let selectedSavedViewId = savedMapViews.activeId;
+    let selectedSavedViewId = '';
     function validSavedMapViewState(state) {
       if (!state || !state.toggles || Array.isArray(state.toggles) || !state.filters || Array.isArray(state.filters)) return false;
       if (!Object.values(state.toggles).every(value => typeof value === 'boolean') || !Object.values(state.filters).every(values => Array.isArray(values) && values.every(value => typeof value === 'string'))) return false;
@@ -910,7 +908,10 @@ const nameI = find(['name','название','локация','место','lin
         const saved=await cloudViews.load();
         if (!saved.views.every(view=>validSavedMapViewState(view.state))) throw new Error('Invalid saved views');
         savedMapViews=saved;
-        selectedSavedViewId=saved.activeId;
+        if (!saved.views.some(view=>view.id===selectedSavedViewId)) {
+          selectedSavedViewId='';
+          selectedSavedViewVersion=0;
+        }
         cloudViewsReady=true;
         cacheCloudViews(saved);
         renderSavedMapViews();
@@ -1037,7 +1038,7 @@ const nameI = find(['name','название','локация','место','lin
       renderSavedMapViews();
       savedViewMessage('viewDeleted');
     }
-    async function openSavedMapView(id, startup = false, cached = false) {
+    async function openSavedMapView(id, startup = false) {
       const view = savedMapViews.views.find(item => item.id === id);
       if (!map || !view) return;
       clearTimeout(undoTimer);
@@ -1083,9 +1084,8 @@ const nameI = find(['name','название','локация','место','lin
         infoWindow.close();
         restoreMapViewport(saved.viewport);
       }
-      const remembered = !cached && await persistSavedMapViews({ ...savedMapViews, activeId:id });
+      const remembered = await persistSavedMapViews({ ...savedMapViews, activeId:id });
       renderSavedMapViews();
-      if (cached) savedViewMessage('cloudCached');
       if (remembered) savedViewMessage(missingRoutePoints ? 'viewRouteMissing' : missing ? 'viewMissing' : 'viewLoaded', missingRoutePoints ? String(missingRoutePoints) : missing ? String(missing) : view.name);
       undoBaseline = captureUndoState();
       if (saved.built && !missingRoutePoints && selectedRoutePoints().length >= 2) {
@@ -1101,7 +1101,7 @@ const nameI = find(['name','название','локация','место','lin
     document.querySelector('#exportMapViews').addEventListener('click',exportSavedMapViews);
     document.querySelector('#importMapViews').addEventListener('click',()=>document.querySelector('#importMapViewsFile').click());
     document.querySelector('#importMapViewsFile').addEventListener('change',async event=>{await importSavedMapViews(event.target.files[0]);event.target.value='';});
-    document.querySelector('#retryCloudViews').addEventListener('click',async()=>{if(await initializeCloudViews() && savedMapViews.activeId) await openSavedMapView(savedMapViews.activeId,true);});
+    document.querySelector('#retryCloudViews').addEventListener('click',initializeCloudViews);
     document.querySelector('#cloudAccountLink').addEventListener('click',event=>{
       if (!cloudViews?.standalone) return;
       event.preventDefault();
@@ -1110,8 +1110,7 @@ const nameI = find(['name','название','локация','место','lin
     });
     window.addEventListener('map-cloud-connected',async()=>{
       if (!map || cloudViewsReady || cloudViewsInitializing) return;
-      const hasEdits=undoHistory.length>0;
-      if (await initializeCloudViews() && savedMapViews.activeId && !hasEdits) await openSavedMapView(savedMapViews.activeId,true);
+      await initializeCloudViews();
     });
     window.addEventListener('map-cloud-disconnected',()=>{
       cloudViewsReady=false;
@@ -1237,12 +1236,10 @@ const nameI = find(['name','название','локация','место','lin
       originalInitMap();
       undoBaseline = captureUndoState();
       renderSavedMapViews();
-      if (cloudViews?.standalone && savedMapViews.activeId) await openSavedMapView(savedMapViews.activeId,true,true);
       if (!await initializeCloudViews()) return;
       undoBaseline = captureUndoState();
       updateUndoButton();
       renderSavedMapViews();
-      if (savedMapViews.activeId) openSavedMapView(savedMapViews.activeId, true);
     };
     const originalApplyLanguage = applyLanguage;
     applyLanguage = function() {
