@@ -176,6 +176,9 @@
     .map-card-actions button { border:0; border-radius:7px; background:#167c71; color:#fff; padding:7px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
     .map-card-actions .map-card-add { display:inline-flex; align-items:center; justify-content:center; width:32px; flex:0 0 32px; padding:7px 0; }
     .map-card-add svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .map-card-actions .map-card-name { background:#eef8f5; color:var(--accent); border:1px solid #9bcfc3; }
+    .map-location-name { overflow-wrap:anywhere; }
+    .temporary-name-note { display:block; margin-top:2px; color:var(--muted); font-size:11px; }
     .map-card-actions .map-card-hide { border:1px solid #d4dfdd; background:#f3f7f6; color:#5f7277; }
     .map-card-actions .map-card-hide:hover { border-color:#efb2ad; background:#fde8e7; color:#b42318; }
     .warehouse-options { display:grid; gap:7px; margin-top:10px; }
@@ -269,6 +272,8 @@
     Object.assign(translations.en,{estimatedArrival:'Arrival ≈',arrivalTimeHint:'Your local time · no stops',routeCalculating:'Calculating route…'});
     Object.assign(translations.ru,{routePlanHeading:'Планирование поездки',routePlanDeparture:'Выезд',routePlanArrival:'Прибытие',routePlanReset:'Сбросить',routePlanResetHint:'Вернуться к выезду в момент построения маршрута',routePlanHint:'Измените любое поле — второе пересчитается. Используется показанное время в пути, с точностью до минуты.',plannedArrival:'По плану прибытие ≈',invalidPlanTime:'Укажите корректные дату и время в часовом поясе устройства.',planDeparturePast:'Расчётное время выезда уже прошло.'});
     Object.assign(translations.en,{routePlanHeading:'Plan your trip',routePlanDeparture:'Depart at',routePlanArrival:'Arrive by',routePlanReset:'Reset',routePlanResetHint:'Return to departure when the route was built',routePlanHint:'Edit either field to recalculate the other. Uses the driving time above, rounded to minutes.',plannedArrival:'Planned arrival ≈',invalidPlanTime:'Choose a valid date and time in your device time zone.',planDeparturePast:'The calculated departure time has already passed.'});
+    Object.assign(translations.ru,{temporaryNameButton:'Задать временное название',temporaryNamePrompt:'Временное название, до 80 символов (до перезагрузки). Пустое поле — убрать название:',temporaryNameNote:'Временное название · до перезагрузки',temporaryNameSet:'Временное название задано.',temporaryNameRemoved:'Временное название убрано.'});
+    Object.assign(translations.en,{temporaryNameButton:'Give a temporary name',temporaryNamePrompt:'Temporary name, up to 80 characters (until reload). Leave blank to remove:',temporaryNameNote:'Temporary name · until reload',temporaryNameSet:'Temporary name set.',temporaryNameRemoved:'Temporary name removed.'});
     let language = 'ru';
     try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
@@ -281,6 +286,40 @@
       { name: 'Пример локации', lat: 55.751244, lng: 37.618423, note: 'Замените данные в Google Sheets' }
     ];
     let map, infoWindow, directionsService, directionsRenderer, locationLabels, markers = [], hotelMarkers = [], addedMarkers = [], addedLocations = [], externalSearchMarker, externalSearchResult, locations = [], routeSelection = new Set(), highlightedRouteIndex = -1;
+    const temporaryLocationNames = new Map();
+    function temporaryLocationKey(kind, location) {
+      if (kind === 'local') return `local:${JSON.stringify(savedLocationReference(location))}`;
+      const point = addedLocations.find(item=>Math.abs(item.lat-location.lat)<.000001 && Math.abs(item.lng-location.lng)<.000001) || location;
+      return `point:${point.lat},${point.lng}`;
+    }
+    function temporaryLocationName(kind, location) { return temporaryLocationNames.get(temporaryLocationKey(kind,location)) || ''; }
+    function locationDisplayName(kind, location) { return temporaryLocationName(kind,location) || location.name; }
+    function locationNameHeading(kind, location) {
+      const temporary = temporaryLocationName(kind,location);
+      return `<strong class="map-location-name">${escapeHtml(temporary || location.name)}</strong>${temporary ? `<small class="temporary-name-note">${t('temporaryNameNote')}${kind === 'local' ? ` · ${escapeHtml(location.name)}` : ''}</small>` : ''}`;
+    }
+    function locationNameButton(kind, index) {
+      return `<button type="button" class="map-card-add map-card-name" data-temporary-name="${kind}" title="${t('temporaryNameButton')}" aria-label="${t('temporaryNameButton')}" onclick="nameLocationTemporarily('${kind}',${index})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5M4 20l4-1L21 6a1.4 1.4 0 0 0 0-2l-1-1a1.4 1.4 0 0 0-2 0L5 16l-1 4ZM12 20h8"/></svg></button>`;
+    }
+    function refreshTemporaryLocationNames() {
+      locations.forEach((location,index)=>markers[index]?.setTitle?.([locationDisplayName('local',location),location.marketState ? `Market: ${location.marketState}` : ''].filter(Boolean).join('\n')));
+      addedLocations.forEach((location,index)=>addedMarkers[index]?.setTitle?.([locationDisplayName('added',location),location.address].filter(Boolean).join('\n')));
+      if (externalSearchResult) externalSearchMarker?.setTitle?.([locationDisplayName('external',externalSearchResult),externalSearchResult.address].filter(Boolean).join('\n'));
+      locationLabels?.draw();
+    }
+    function nameLocationTemporarily(kind, index) {
+      const location = kind === 'local' ? locations[index] : kind === 'added' ? addedLocations[index] : externalSearchResult;
+      if (!location) return;
+      const value = window.prompt(t('temporaryNamePrompt'),temporaryLocationName(kind,location));
+      if (value === null) return;
+      const name = Array.from(value.trim().replace(/\s+/g,' ')).slice(0,80).join('');
+      const key = temporaryLocationKey(kind,location);
+      if (name) temporaryLocationNames.set(key,name); else temporaryLocationNames.delete(key);
+      refreshTemporaryLocationNames();
+      if (kind === 'local') focusLocation(index); else if (kind === 'added') showAddedLocationInfo(index); else showExternalSearchResultInfo();
+      document.querySelector('#status').textContent = t(name ? 'temporaryNameSet' : 'temporaryNameRemoved');
+      saveUndoState();
+    }
 
     function createLocationLabelsOverlay(mapInstance, items) { class LocationLabelsOverlay extends google.maps.OverlayView {
       constructor(mapInstance, items) { super(); this.mapInstance = mapInstance; this.items = items; this.enabled = false; this.crewsEnabled = false; this.notesEnabled = false; this.visibleIndexes = []; this.nodes = new Map(); this.setMap(mapInstance); }
@@ -294,7 +333,13 @@
         this.connectorLayer?.replaceChildren();
         if (!this.layer || (!this.enabled && !this.crewsEnabled && !this.notesEnabled)) return;
         const projection = this.getProjection(); if (!projection) return;
-        const activeIndexes = new Set(this.visibleIndexes);
+        const entries = this.visibleIndexes.map(index=>({index,kind:'local',location:this.items[index],marker:markers[index]})).filter(entry=>entry.location);
+        addedLocations.forEach((location,index)=>{
+          const marker = addedMarkers[index];
+          if (!location.hidden && marker?.getMap() && marker.getVisible()) entries.push({index:this.items.length+index,kind:'added',location,marker});
+        });
+        if (externalSearchResult && externalSearchMarker?.getMap() && externalSearchMarker.getVisible()) entries.push({index:this.items.length+addedLocations.length,kind:'external',location:externalSearchResult,marker:externalSearchMarker});
+        const activeIndexes = new Set(entries.map(entry=>entry.index));
         this.nodes.forEach((node, index) => { if (!activeIndexes.has(index)) { node.remove(); this.nodes.delete(index); } });
         const placed = [];
         const overlapArea = (first, second) => Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
@@ -308,19 +353,16 @@
           const padding = (icon?.strokeWeight || 2) / 2;
           return { left:pixel.x - halfWidth * scale - padding, right:pixel.x + halfWidth * scale + padding, top:pixel.y - height * scale - padding, bottom:pixel.y + padding };
         };
-        const boundsByIndex = new Map(this.visibleIndexes.map(index => {
-          const location = this.items[index];
-          return [index, location ? markerBounds(new google.maps.LatLng(location.lat, location.lng), markers[index]?.getIcon() || markerIcon(location)) : null];
-        }));
+        const boundsByIndex = new Map(entries.map(({index,location,marker})=>[index,markerBounds(new google.maps.LatLng(location.lat,location.lng),marker?.getIcon() || markerIcon(location))]));
         const obstacles = [...boundsByIndex.values()].filter(Boolean);
-        [...addedMarkers, ...hotelMarkers, externalSearchMarker].filter(Boolean).forEach(marker => {
+        hotelMarkers.filter(Boolean).forEach(marker => {
           if (!marker.getMap() || !marker.getVisible()) return;
           const bounds = markerBounds(marker.getPosition(), marker.getIcon());
           if (bounds) obstacles.push(bounds);
         });
-        this.visibleIndexes.forEach(index => {
-          const location = this.items[index]; if (!location) return;
-          const labelText = [this.enabled ? location.name : '', this.crewsEnabled && location.crewLead ? `Crew: ${location.crewLead}` : '', this.notesEnabled ? location.custom2 : ''].filter(Boolean).join('\n');
+        entries.forEach(({index,kind,location}) => {
+          const name = temporaryLocationName(kind,location) || (kind === 'local' || location.name !== 'Coordinates' ? location.name : '');
+          const labelText = [this.enabled ? name : '', this.crewsEnabled && location.crewLead ? `Crew: ${location.crewLead}` : '', this.notesEnabled ? location.custom2 : ''].filter(Boolean).join('\n');
           if (!labelText) { const emptyNode = this.nodes.get(index); if (emptyNode) emptyNode.remove(); this.nodes.delete(index); return; }
           let node = this.nodes.get(index);
           if (!node) { node = document.createElement('div'); node.className = 'map-location-label'; this.layer.appendChild(node); this.nodes.set(index, node); }
@@ -874,16 +916,37 @@ const nameI = find(['name','название','локация','место','lin
     function addExternalSearchResultToRoute() { addRoutePoint(externalSearchResult); }
     function addAddedLocationToRoute(index) { addRoutePoint(addedLocations[index]); }
     async function findHotelsNearLocation(location) { hotelMarkers.forEach(marker => marker.setMap(null)); hotelMarkers = []; document.querySelector('#status').textContent = 'Поиск отелей рядом…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchNearby({ fields:['displayName','location','formattedAddress','googleMapsURI','rating'], includedPrimaryTypes:['hotel'], maxResultCount:20, rankPreference:'DISTANCE', locationRestriction:{ center:{ lat:location.lat, lng:location.lng }, radius:10000 } }); places.forEach(place => { const marker = new google.maps.Marker({ map, position:place.location, title:place.displayName, icon:{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:'#7c3aed', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2 } }); marker.addListener('click', () => { const link = place.googleMapsURI ? `<br><a href="${escapeHtml(place.googleMapsURI)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''; infoWindow.setContent(`<strong>${escapeHtml(place.displayName || 'Hotel')}</strong>${place.formattedAddress ? `<br>${escapeHtml(place.formattedAddress)}` : ''}${place.rating ? `<br>Rating: ${place.rating}` : ''}${link}`); infoWindow.open(map, marker); }); hotelMarkers.push(marker); }); document.querySelector('#status').textContent = `${places.length} hotels found nearby`; } catch (error) { console.error(error); document.querySelector('#status').textContent = `Ошибка поиска отелей: ${error.message || 'неизвестная ошибка'}`; } }
-    function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5"><strong>${escapeHtml(x.name)}</strong>${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`pinLocationToMap(${index})`)}<button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button><button type="button" onclick="routeToIntekOffice(${index})">Intek</button>${String(x.locationType || '').trim().toUpperCase() !== 'WH' ? `<button type="button" onclick="routeToWarehouse(${index})">WH</button>` : ''}${markerColorControl('local', index, x)}</div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
+    function focusLocation(index) { const x = locations[index]; if (!x || x.hidden) return; infoWindow.setContent(`<div style="line-height:1.5">${locationNameHeading('local',x)}${x.address ? `<br><b>${t('address')}:</b> ${escapeHtml(x.address)}` : ''}${x.marketState ? `<span class="market-line"><b>${t('marketState')}</b><span class="market-value">${escapeHtml(x.marketState)}</span></span>` : ''}${x.cxStatus ? `<br><b>CX ${t('status')}:</b> ${escapeHtml(x.cxStatus)}` : ''}${x.status ? `<br><b>${t('status')}:</b> ${escapeHtml(x.status)}` : ''}${x.week ? `<br><b>${t('week')}:</b> ${escapeHtml(x.week)}` : ''}${x.crewLead ? `<br><b>${t('crewLead')}:</b> ${escapeHtml(x.crewLead)}` : ''}<br><a href="${escapeHtml(x.mapsLink)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`pinLocationToMap(${index})`)}<button type="button" class="map-card-hotel" title="Find hotels nearby" aria-label="Find hotels nearby" onclick="findHotelsNearLocation(locations[${index}])">⌂</button><button type="button" class="map-card-hide" onclick="hideLocation(${index})">${t('hideButton')}</button><button type="button" onclick="routeToIntekOffice(${index})">Intek</button>${String(x.locationType || '').trim().toUpperCase() !== 'WH' ? `<button type="button" onclick="routeToWarehouse(${index})">WH</button>` : ''}${markerColorControl('local', index, x)}${locationNameButton('local',index)}</div></div>`); infoWindow.open(map, markers[index]); document.querySelectorAll('.place').forEach(el => el.classList.toggle('active', Number(el.dataset.index) === index)); }
     function initMap() { map = new google.maps.Map(document.getElementById('map'), { center:{lat:55.751244,lng:37.618423}, zoom:5 }); infoWindow = new google.maps.InfoWindow({ maxWidth:430 }); directionsService = new google.maps.DirectionsService(); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); locationLabels = createLocationLabelsOverlay(map, locations); locations.forEach((x, i) => { const markerTitle = [x.name, x.marketState ? `Market: ${x.marketState}` : ''].filter(Boolean).join('\n'); const marker = new google.maps.Marker({ position:{lat:x.lat,lng:x.lng}, map, title:markerTitle, icon:markerIcon(x) }); marker.addListener('click', () => focusLocation(i)); markers.push(marker); }); if (locations.length) { const bounds = new google.maps.LatLngBounds(); locations.forEach(x => bounds.extend({lat:x.lat,lng:x.lng})); map.fitBounds(bounds); } setupFilters(); renderList(); }
     window.initMap = initMap;
     function coordinatesFromQuery(query) { const match = String(query).trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/); if (!match) return null; const lat = Number(match[1]); const lng = Number(match[2]); return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; }
-    function clearExternalSearchMarker() { if (externalSearchMarker) externalSearchMarker.setMap(null); externalSearchMarker = null; externalSearchResult = null; }
-    function showExternalSearchResult({ name, position, address = '', mapsUri = '', zoomToLocation = true }) { const lat = typeof position.lat === 'function' ? position.lat() : position.lat; const lng = typeof position.lng === 'function' ? position.lng() : position.lng; const point = { lat:Number(lat), lng:Number(lng) }; if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) throw new Error('Google не вернул координаты места.'); clearExternalSearchMarker(); externalSearchResult = { ...point, name, address, mapsUri, routeLabel:name === 'Coordinates' ? `${point.lat}, ${point.lng}` : name }; const openInfo = () => { const link = mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5"><strong>${escapeHtml(name)}</strong>${address ? `<br>${escapeHtml(address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addExternalSearchResultToRoute()">${t('addToRoute')}</button>${mapAddButton('addExternalSearchResultToMap()')}${markerColorControl('external', 0, externalSearchResult)}</div></div>`); infoWindow.open(map, externalSearchMarker); }; externalSearchMarker = new google.maps.Marker({ map, position:point, title:[name, address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:'#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); externalSearchMarker.addListener('click', openInfo); map.panTo(point); if (zoomToLocation) map.setZoom(14); openInfo(); document.querySelector('#status').textContent = `${language === 'ru' ? 'Найдена локация' : 'Location found'}: ${name}`; }
-    function showAddedLocationInfo(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker || location.hidden) return; const link = location.mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5"><strong>${escapeHtml(location.name)}</strong>${location.address ? `<br>${escapeHtml(location.address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addAddedLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`showAddedLocationOnMap(${index})`)}<button type="button" class="map-card-hide" onclick="hideAddedLocation(${index})">${t('hideButton')}</button>${markerColorControl('added', index, location)}</div></div>`); infoWindow.open(map, marker); }
-    function showAddedLocationOnMap(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = false; marker.setMap(map); map.panTo({ lat:location.lat, lng:location.lng }); document.querySelector('#status').textContent = `${location.name} показана на карте.`; }
-    function hideAddedLocation(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = true; marker.setMap(null); infoWindow.close(); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
-    function addExternalSearchResultToMap() { if (!externalSearchResult) return false; const existingIndex = addedLocations.findIndex(location => Math.abs(location.lat - externalSearchResult.lat) < 0.000001 && Math.abs(location.lng - externalSearchResult.lng) < 0.000001); if (existingIndex >= 0) { clearExternalSearchMarker(); addedLocations[existingIndex].hidden = false; addedMarkers[existingIndex].setMap(map); showAddedLocationInfo(existingIndex); document.querySelector('#status').textContent = `${addedLocations[existingIndex].name} уже добавлена на карту.`; return true; } const location = { ...externalSearchResult, hidden:false }; const index = addedLocations.push(location) - 1; const marker = new google.maps.Marker({ map, position:{ lat:location.lat, lng:location.lng }, title:[location.name, location.address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:location.markerColor || '#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); marker.addListener('click', () => showAddedLocationInfo(index)); addedMarkers.push(marker); clearExternalSearchMarker(); showAddedLocationInfo(index); document.querySelector('#status').textContent = `${location.name} добавлена на карту.`; return true; }
+    function clearExternalSearchMarker() { if (externalSearchMarker) externalSearchMarker.setMap(null); externalSearchMarker = null; externalSearchResult = null; locationLabels?.draw(); }
+    function showExternalSearchResultInfo() {
+      const location = externalSearchResult;
+      if (!location || !externalSearchMarker) return;
+      const link = location.mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`;
+      infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5">${locationNameHeading('external',location)}${location.address ? `<br>${escapeHtml(location.address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addExternalSearchResultToRoute()">${t('addToRoute')}</button>${mapAddButton('addExternalSearchResultToMap()')}${markerColorControl('external',0,location)}${locationNameButton('external',0)}</div></div>`);
+      infoWindow.open(map,externalSearchMarker);
+    }
+    function showExternalSearchResult({ name, position, address = '', mapsUri = '', zoomToLocation = true }) {
+      const lat = typeof position.lat === 'function' ? position.lat() : position.lat;
+      const lng = typeof position.lng === 'function' ? position.lng() : position.lng;
+      const point = {lat:Number(lat),lng:Number(lng)};
+      if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) throw new Error('Google не вернул координаты места.');
+      clearExternalSearchMarker();
+      externalSearchResult = {...point,name,address,mapsUri,routeLabel:name === 'Coordinates' ? `${point.lat}, ${point.lng}` : name};
+      externalSearchMarker = new google.maps.Marker({map,position:point,title:[locationDisplayName('external',externalSearchResult),address].filter(Boolean).join('\n'),icon:{path:markerShapes.added,fillColor:'#0f766e',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2,scale:.9,anchor:new google.maps.Point(0,0)}});
+      externalSearchMarker.addListener('click',showExternalSearchResultInfo);
+      map.panTo(point);
+      if (zoomToLocation) map.setZoom(14);
+      showExternalSearchResultInfo();
+      locationLabels?.draw();
+      document.querySelector('#status').textContent = `${language === 'ru' ? 'Найдена локация' : 'Location found'}: ${name}`;
+    }
+    function showAddedLocationInfo(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker || location.hidden) return; const link = location.mapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`; infoWindow.setContent(`<div class="external-search-card" style="line-height:1.5">${locationNameHeading('added',location)}${location.address ? `<br>${escapeHtml(location.address)}` : ''}<br><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${t('openMaps')}</a><div class="map-card-actions"><button type="button" onclick="addAddedLocationToRoute(${index})">${t('addToRoute')}</button>${mapAddButton(`showAddedLocationOnMap(${index})`)}<button type="button" class="map-card-hide" onclick="hideAddedLocation(${index})">${t('hideButton')}</button>${markerColorControl('added', index, location)}${locationNameButton('added',index)}</div></div>`); infoWindow.open(map, marker); }
+    function showAddedLocationOnMap(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = false; marker.setMap(map); map.panTo({ lat:location.lat, lng:location.lng }); document.querySelector('#status').textContent = `${location.name} показана на карте.`; locationLabels?.draw(); }
+    function hideAddedLocation(index) { const location = addedLocations[index]; const marker = addedMarkers[index]; if (!location || !marker) return; location.hidden = true; marker.setMap(null); infoWindow.close(); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; locationLabels?.draw(); }
+    function addExternalSearchResultToMap() { if (!externalSearchResult) return false; const existingIndex = addedLocations.findIndex(location => Math.abs(location.lat - externalSearchResult.lat) < 0.000001 && Math.abs(location.lng - externalSearchResult.lng) < 0.000001); if (existingIndex >= 0) { clearExternalSearchMarker(); addedLocations[existingIndex].hidden = false; addedMarkers[existingIndex].setMap(map); locationLabels?.draw(); showAddedLocationInfo(existingIndex); document.querySelector('#status').textContent = `${addedLocations[existingIndex].name} уже добавлена на карту.`; return true; } const location = { ...externalSearchResult, hidden:false }; const index = addedLocations.push(location) - 1; const marker = new google.maps.Marker({ map, position:{ lat:location.lat, lng:location.lng }, title:[locationDisplayName('added',location), location.address].filter(Boolean).join('\n'), icon:{ path:markerShapes.added, fillColor:location.markerColor || '#0f766e', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2, scale:.9, anchor:new google.maps.Point(0,0) } }); marker.addListener('click', () => showAddedLocationInfo(index)); addedMarkers.push(marker); clearExternalSearchMarker(); showAddedLocationInfo(index); document.querySelector('#status').textContent = `${location.name} добавлена на карту.`; return true; }
     async function addCurrentSearchToMap() { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = language === 'ru' ? 'Введите адрес, название или координаты.' : 'Enter an address, name, or coordinates.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => location.name.toLowerCase() === lowerQuery); const localIndex = exactIndex >= 0 ? exactIndex : locations.indexOf(searchLocations(query, true)[0]); if (localIndex >= 0) { locations[localIndex].pinnedToMap = true; locations[localIndex].hidden = false; clearExternalSearchMarker(); renderList(query); map.panTo({ lat:locations[localIndex].lat, lng:locations[localIndex].lng }); focusLocation(localIndex); document.querySelector('#status').textContent = `${locations[localIndex].name} ${language === 'ru' ? 'добавлена на карту.' : 'added to map.'}`; return; } clearExternalSearchMarker(); await focusSearchLocation(false); addExternalSearchResultToMap(); }
     async function focusSearchLocation(zoomToLocation = true) { const query = document.querySelector('#search').value.trim(); if (!query) { document.querySelector('#status').textContent = 'Введите название, адрес или координаты.'; return; } const lowerQuery = query.toLowerCase(); const exactIndex = locations.findIndex(location => !location.hidden && location.name.toLowerCase() === lowerQuery); const matchIndex = exactIndex >= 0 ? exactIndex : locations.indexOf(searchLocations(query)[0]); if (matchIndex >= 0) { clearExternalSearchMarker(); map.panTo({ lat:locations[matchIndex].lat, lng:locations[matchIndex].lng }); if (zoomToLocation) map.setZoom(13); focusLocation(matchIndex); return; } const coordinates = coordinatesFromQuery(query); if (coordinates) { showExternalSearchResult({ name:'Coordinates', position:coordinates, zoomToLocation, address:`${coordinates.lat}, ${coordinates.lng}` }); return; } document.querySelector('#status').textContent = 'Ищу локацию в Google Maps…'; try { const { Place } = await google.maps.importLibrary('places'); const { places } = await Place.searchByText({ textQuery:query, fields:['displayName','location','formattedAddress','googleMapsURI'], locationBias:map.getCenter(), maxResultCount:1 }); const place = places?.[0]; if (!place?.location) { document.querySelector('#status').textContent = 'Локация не найдена.'; return; } showExternalSearchResult({ name:place.displayName || query, zoomToLocation, position:place.location, address:place.formattedAddress || '', mapsUri:place.googleMapsURI || '' }); } catch (error) { console.error(error); document.querySelector('#status').textContent = `Не удалось найти локацию: ${error.message || 'проверьте Places API (New)'}`; } }
     function renderSearchSuggestions(query) { const suggestions = document.querySelector('#searchSuggestions'); const matches = searchLocations(query).slice(0, 8); suggestions.innerHTML = matches.map(location => suggestionMarkup(location, 'data-suggestion')).join(''); suggestions.classList.toggle('visible', matches.length > 0); }
@@ -1267,6 +1330,8 @@ const nameI = find(['name','название','локация','место','lin
         points:[...document.querySelectorAll('[data-route-point]')].map(input => ({ value:input.value, lat:input.dataset.routeLat, lng:input.dataset.routeLng })),
         locations:locations.map(location => ({ hidden:!!location.hidden, pinnedToMap:!!location.pinnedToMap, markerColor:location.markerColor || null })),
         added:addedLocations.map(location => ({ ...location })),
+        preview:savedMapPoint(externalSearchResult),
+        temporaryNames:[...temporaryLocationNames.entries()],
         built:document.querySelector('.route').classList.contains('has-built-route'),
         routePlan:normalizeRoutePlan(routePlan),
         result:result.innerHTML,
@@ -1307,6 +1372,10 @@ const nameI = find(['name','название','локация','место','lin
       routeRequestVersion++;
       try {
         routePlan = normalizeRoutePlan(state.routePlan);
+        if (Array.isArray(state.temporaryNames)) {
+          temporaryLocationNames.clear();
+          state.temporaryNames.forEach(([key,name])=>{ if (typeof key === 'string' && typeof name === 'string') temporaryLocationNames.set(key,name); });
+        }
         infoWindow.close();
         clearExternalSearchMarker();
         document.querySelector('#search').value = state.search;
@@ -1323,6 +1392,12 @@ const nameI = find(['name','название','локация','место','lin
         });
         clearExternalSearchMarker();
         document.querySelectorAll('.route-point-row').forEach(row => row.remove());
+        const preview = savedMapPoint(state.preview);
+        if (preview) {
+          showExternalSearchResult({name:preview.name,position:preview,address:preview.address,mapsUri:preview.mapsUri,zoomToLocation:false});
+          externalSearchResult.markerColor = preview.markerColor;
+          if (preview.markerColor) externalSearchMarker.setIcon({...externalSearchMarker.getIcon(),fillColor:preview.markerColor});
+        }
         state.points.forEach((point, index) => {
           const row = document.createElement('div');
           row.className = 'route-point-row';
@@ -1355,6 +1430,7 @@ const nameI = find(['name','название','локация','место','lin
         selectedSavedViewId = savedMapViews.views.some(view => view.id === state.viewId) ? state.viewId : '';
         selectedSavedViewVersion = state.viewVersion || 0;
         renderSavedMapViews();
+        refreshTemporaryLocationNames();
         undoBaseline = captureUndoState();
       } finally { restoringHistory = false; updateUndoButton(); }
     }
