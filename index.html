@@ -141,6 +141,19 @@
     .route-result .route-arrival { margin-top:9px; padding-top:8px; border-top:1px solid #bbddd4; font-size:12px; }
     .route-arrival time { color:#0b5e56; font-weight:800; }
     .route-result .route-arrival-note { margin-top:3px; font-size:9px; font-weight:500; letter-spacing:0; }
+    .route-result.has-time { flex-wrap:wrap; }
+    .route-plan { display:grid; flex:0 0 100%; gap:9px; min-width:0; padding-top:12px; border-top:1px solid #bbddd4; }
+    .route-plan-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; }
+    .route .route-plan-reset { width:auto; padding:4px 8px; border:1px solid #b8d8d0; background:#fff; color:var(--accent); font-size:10px; }
+    .route-plan label { display:grid; gap:4px; color:#3f625c; font-size:11px; font-weight:700; }
+    .route-plan label.is-anchor { color:#0b5e56; }
+    .route .route-plan input { min-width:0; margin:0; padding:8px; border-color:#b8d8d0; font-size:12px; cursor:text; }
+    .route-plan input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+    .route-plan input[aria-invalid="true"] { border-color:#b42318; }
+    .route-plan-hint, .route-plan-status { margin:0; font-size:10px; line-height:1.5; }
+    .route-plan-hint { color:#4e726c; }
+    .route-plan-status { color:#925013; }
+    .route-plan-status:empty { display:none; }
     .add-route { width:100%; margin:2px 0 8px; padding:8px; border:1px dashed #9bcfc3; border-radius:9px; background:#f0faf7; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
     .route input { cursor:grab; }
     .route input:active { cursor:grabbing; }
@@ -254,6 +267,8 @@
     Object.assign(translations.en, { cloudAccount:'Sign in to online map', cloudSignOut:'Sign out', cloudLocal:'Views are only in this browser for now.', cloudLoading:'Connecting to your views…', cloudConnected:'Saved in your account', cloudError:'Storage connection unavailable. Your map changes are still on screen. Reconnect and save again.', cloudConflict:'This view changed on another device. The list has been refreshed; your edits are still on the map. Open the latest view or save your edits under a new name.', cloudSignIn:'Sign in with ChatGPT', cloudHint:'The default map opens each time. Open account-backed views manually. Click Update to save your edits.', exportViews:'Download views', importViews:'Import file', importViewsDone:'Imported views saved.', importViewsError:'Could not read this views file. Choose a JSON file downloaded from this map.', cloudListUpdated:'The view list was refreshed from your account. Select a view to open it.' });
     Object.assign(translations.ru,{estimatedArrival:'Прибытие ≈',arrivalTimeHint:'Время устройства · без остановок',routeCalculating:'Рассчитываю маршрут…'});
     Object.assign(translations.en,{estimatedArrival:'Arrival ≈',arrivalTimeHint:'Your local time · no stops',routeCalculating:'Calculating route…'});
+    Object.assign(translations.ru,{routePlanHeading:'Планирование поездки',routePlanDeparture:'Выезд',routePlanArrival:'Прибытие',routePlanReset:'Сбросить',routePlanResetHint:'Вернуться к выезду в момент построения маршрута',routePlanHint:'Измените любое поле — второе пересчитается. Используется показанное время в пути, с точностью до минуты.',plannedArrival:'По плану прибытие ≈',invalidPlanTime:'Укажите корректные дату и время в часовом поясе устройства.',planDeparturePast:'Расчётное время выезда уже прошло.'});
+    Object.assign(translations.en,{routePlanHeading:'Plan your trip',routePlanDeparture:'Depart at',routePlanArrival:'Arrive by',routePlanReset:'Reset',routePlanResetHint:'Return to departure when the route was built',routePlanHint:'Edit either field to recalculate the other. Uses the driving time above, rounded to minutes.',plannedArrival:'Planned arrival ≈',invalidPlanTime:'Choose a valid date and time in your device time zone.',planDeparturePast:'The calculated departure time has already passed.'});
     let language = 'ru';
     try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
@@ -637,6 +652,28 @@ const nameI = find(['name','название','локация','место','lin
       return { path:markerShapes[category], fillColor:location.markerColor || color, fillOpacity:1, strokeColor:borderColor || '#ffffff', strokeWeight:borderColor ? 5 : 2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
     }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
+    let routePlan = null;
+    function normalizeRoutePlan(plan) {
+      if (!plan || !['departure','arrival'].includes(plan.mode) || !Number.isFinite(plan.at)) return null;
+      const date = new Date(plan.at);
+      return Number.isFinite(date.getTime()) && date.getFullYear() >= 1 && date.getFullYear() <= 9999 ? {mode:plan.mode, at:plan.at} : null;
+    }
+    function formatRoutePlanTime(timestamp) {
+      const date = new Date(timestamp);
+      const pad = value => String(value).padStart(2,'0');
+      return `${String(date.getFullYear()).padStart(4,'0')}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+    function parseRoutePlanTime(value) {
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+      const timestamp = new Date(value).getTime();
+      return Number.isFinite(timestamp) && formatRoutePlanTime(timestamp) === value ? timestamp : null;
+    }
+    function calculateRouteSchedule(seconds, departedAt, plan = routePlan) {
+      const anchor = normalizeRoutePlan(plan);
+      const duration = anchor ? Math.max(1,Math.round(seconds/60))*60000 : seconds*1000;
+      const departure = anchor?.mode === 'departure' ? anchor.at : anchor?.mode === 'arrival' ? anchor.at-duration : departedAt;
+      return {departure, arrival:departure+duration, seconds:duration/1000};
+    }
     function formatRouteArrival(departedAt, seconds) {
       const departure = new Date(departedAt);
       const arrival = new Date(departedAt + seconds * 1000);
@@ -649,8 +686,41 @@ const nameI = find(['name','название','локация','место','lin
     }
     function renderRouteSummary(seconds, distance, departedAt) {
       if (![seconds, distance, departedAt].every(Number.isFinite) || seconds < 0 || distance < 0) return;
-      const arrival = formatRouteArrival(departedAt, seconds);
-      document.querySelector('#routeResult').innerHTML = `<span class="route-time-icon">🚗</span><span class="route-time-details" data-seconds="${seconds}" data-distance="${distance}" data-departed-at="${departedAt}"><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, {maximumFractionDigits:1}).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small><small class="route-arrival">${t('estimatedArrival')} <time datetime="${arrival.dateTime}">${escapeHtml(arrival.text)}</time></small><small class="route-arrival-note">${t('arrivalTimeHint')}</small></span>`;
+      const schedule = calculateRouteSchedule(seconds, departedAt);
+      const arrival = formatRouteArrival(schedule.departure, schedule.seconds);
+      document.querySelector('#routeResult').innerHTML = `<span class="route-time-icon">🚗</span><span class="route-time-details" data-seconds="${seconds}" data-distance="${distance}" data-departed-at="${departedAt}"><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, {maximumFractionDigits:1}).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small><small class="route-arrival" aria-live="polite"><span class="route-arrival-label">${t(routePlan ? 'plannedArrival' : 'estimatedArrival')}</span> <time datetime="${arrival.dateTime}">${escapeHtml(arrival.text)}</time></small><small class="route-arrival-note">${t('arrivalTimeHint')}</small></span><div class="route-plan"><div class="route-plan-heading"><b>${t('routePlanHeading')}</b><button type="button" class="route-plan-reset" data-route-plan-reset title="${t('routePlanResetHint')}">${t('routePlanReset')}</button></div><label><span>${t('routePlanDeparture')}</span><input id="routeDepartureTime" type="datetime-local" step="60" value="${formatRoutePlanTime(schedule.departure)}" aria-describedby="routePlanHint routePlanStatus"></label><label><span>${t('routePlanArrival')}</span><input id="routeArrivalTime" type="datetime-local" step="60" value="${formatRoutePlanTime(schedule.arrival)}" aria-describedby="routePlanHint routePlanStatus"></label><p id="routePlanHint" class="route-plan-hint">${t('routePlanHint')}</p><p id="routePlanStatus" class="route-plan-status" role="status"></p></div>`;
+      updateRoutePlanDisplay();
+    }
+    function updateRoutePlanDisplay(editedInput = null) {
+      const summary = document.querySelector('#routeResult.has-time .route-time-details');
+      if (!summary) return;
+      const schedule = calculateRouteSchedule(Number(summary.dataset.seconds), Number(summary.dataset.departedAt));
+      const arrival = formatRouteArrival(schedule.departure, schedule.seconds);
+      const time = document.querySelector('#routeResult time');
+      time.dateTime = arrival.dateTime;
+      time.textContent = arrival.text;
+      document.querySelector('.route-arrival-label').textContent = t(routePlan ? 'plannedArrival' : 'estimatedArrival');
+      [['routeDepartureTime',schedule.departure,'departure'],['routeArrivalTime',schedule.arrival,'arrival']].forEach(([id,timestamp,mode])=>{
+        const input = document.getElementById(id);
+        if (input !== editedInput) input.value = formatRoutePlanTime(timestamp);
+        input.setCustomValidity('');
+        input.removeAttribute('aria-invalid');
+        input.closest('label').classList.toggle('is-anchor',routePlan?.mode === mode);
+        const zone = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US',{timeZoneName:'short'}).formatToParts(new Date(timestamp)).find(part=>part.type==='timeZoneName')?.value || '';
+        input.closest('label').querySelector('span').textContent = `${t(mode === 'arrival' ? 'routePlanArrival' : 'routePlanDeparture')}${zone ? ` · ${zone}` : ''}`;
+      });
+      document.querySelector('#routePlanStatus').textContent = routePlan && schedule.departure < Date.now()-60000 ? t('planDeparturePast') : '';
+    }
+    function changeRoutePlan(input) {
+      const timestamp = parseRoutePlanTime(input.value);
+      if (timestamp === null) {
+        input.setCustomValidity(t('invalidPlanTime'));
+        input.setAttribute('aria-invalid','true');
+        document.querySelector('#routePlanStatus').textContent = t('invalidPlanTime');
+        return;
+      }
+      routePlan = {mode:input.id === 'routeArrivalTime' ? 'arrival' : 'departure', at:timestamp};
+      updateRoutePlanDisplay(input);
     }
     function routeLetter(index) { return String.fromCharCode(65 + index); }
     function clearBuiltRoute() { routeRequestVersion++; document.querySelector('.route')?.classList.remove('has-built-route'); const routeResult = document.querySelector('#routeResult'); if (routeResult?.classList.contains('has-time')) routeResult.textContent = t('routeHint'); routeResult?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
@@ -869,6 +939,7 @@ const nameI = find(['name','название','локация','место','lin
       if (!Array.isArray(state.points) || !state.points.every(point => point && typeof point.value === 'string' && (!point.reference || typeof point.reference.name === 'string'))) return false;
       if (!Array.isArray(state.added) || !state.added.every(point => savedMapPoint(point))) return false;
       if (state.preview && !savedMapPoint(state.preview)) return false;
+      if (state.routePlan != null && !normalizeRoutePlan(state.routePlan)) return false;
       return !state.viewport || (Number.isFinite(state.viewport.center?.lat) && Number.isFinite(state.viewport.center?.lng) && Math.abs(state.viewport.center.lat) <= 90 && Math.abs(state.viewport.center.lng) <= 180);
     }
     function readSavedMapViews() {
@@ -1049,6 +1120,7 @@ const nameI = find(['name','название','локация','место','lin
           return { value:input.value, reference:location ? savedLocationReference(location) : null, lat:input.dataset.routeLat, lng:input.dataset.routeLng };
         }),
         built:document.querySelector('.route').classList.contains('has-built-route'),
+        routePlan:normalizeRoutePlan(routePlan),
         viewport:currentMapViewport()
       };
     }
@@ -1065,6 +1137,8 @@ const nameI = find(['name','название','локация','место','lin
     }
     async function saveNamedMapView(update = false) {
       if (!map) return;
+      const invalidTime = document.querySelector('.route-plan input:invalid');
+      if (invalidTime) { invalidTime.reportValidity(); return; }
       const existing = savedMapViews.views.find(view => view.id === selectedSavedViewId);
       if (update && !existing) return;
       const input = document.querySelector('#savedViewName');
@@ -1119,6 +1193,7 @@ const nameI = find(['name','название','локация','место','lin
           return { value:'' };
         }),
         added:saved.added.map(savedMapPoint).filter(Boolean),
+        routePlan:normalizeRoutePlan(saved.routePlan),
         built:false,
         result:escapeHtml(t('routeHint')),
         viewport:saved.viewport
@@ -1144,6 +1219,14 @@ const nameI = find(['name','название','локация','место','lin
       }
     }
     document.querySelector('#saveNewView').addEventListener('click', () => saveNamedMapView());
+    ['input','change'].forEach(eventName=>document.querySelector('#routeResult').addEventListener(eventName,event=>{
+      if (event.target.matches('#routeDepartureTime,#routeArrivalTime')) changeRoutePlan(event.target);
+    }));
+    document.querySelector('#routeResult').addEventListener('click',event=>{
+      if (!event.target.closest('[data-route-plan-reset]')) return;
+      routePlan = null;
+      updateRoutePlanDisplay();
+    });
     document.querySelector('#updateSavedView').addEventListener('click', () => saveNamedMapView(true));
     document.querySelector('#openSavedView').addEventListener('click',()=>openSavedMapView(selectedSavedViewId));
     document.querySelector('#deleteSavedView').addEventListener('click', deleteNamedMapView);
@@ -1185,6 +1268,7 @@ const nameI = find(['name','название','локация','место','lin
         locations:locations.map(location => ({ hidden:!!location.hidden, pinnedToMap:!!location.pinnedToMap, markerColor:location.markerColor || null })),
         added:addedLocations.map(location => ({ ...location })),
         built:document.querySelector('.route').classList.contains('has-built-route'),
+        routePlan:normalizeRoutePlan(routePlan),
         result:result.innerHTML,
         directions:directionsRenderer?.getDirections()
       };
@@ -1222,6 +1306,7 @@ const nameI = find(['name','название','локация','место','lin
       restoringHistory = true;
       routeRequestVersion++;
       try {
+        routePlan = normalizeRoutePlan(state.routePlan);
         infoWindow.close();
         clearExternalSearchMarker();
         document.querySelector('#search').value = state.search;
@@ -1260,6 +1345,8 @@ const nameI = find(['name','название','локация','место','lin
         document.querySelector('.route').classList.toggle('has-built-route', state.built);
         document.querySelector('#routeResult').classList.toggle('has-time', state.built);
         document.querySelector('#routeResult').innerHTML = state.result;
+        const summary = document.querySelector('#routeResult.has-time .route-time-details');
+        if (summary) renderRouteSummary(Number(summary.dataset.seconds), Number(summary.dataset.distance), Number(summary.dataset.departedAt));
         renderList(state.search);
         infoWindow.close();
         document.querySelector('#searchSuggestions').classList.remove('visible');
