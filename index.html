@@ -137,6 +137,10 @@
     .route-time-icon { display:grid; width:30px; height:30px; flex:0 0 30px; place-items:center; border-radius:50%; background:#167c71; color:#fff; font-size:15px; box-shadow:0 3px 7px rgba(15,118,110,.28); }
     .route-result small { display:block; margin-bottom:1px; color:#4e726c; font-size:11px; font-weight:700; letter-spacing:.02em; }
     .route-result strong { display:block; color:#0b5e56; font-size:17px; line-height:1.15; }
+    .route-time-details { min-width:0; flex:1; }
+    .route-result .route-arrival { margin-top:9px; padding-top:8px; border-top:1px solid #bbddd4; font-size:12px; }
+    .route-arrival time { color:#0b5e56; font-weight:800; }
+    .route-result .route-arrival-note { margin-top:3px; font-size:9px; font-weight:500; letter-spacing:0; }
     .add-route { width:100%; margin:2px 0 8px; padding:8px; border:1px dashed #9bcfc3; border-radius:9px; background:#f0faf7; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
     .route input { cursor:grab; }
     .route input:active { cursor:grabbing; }
@@ -248,6 +252,8 @@
     Object.assign(translations.en, { savedViews:'Map views', viewName:'New view name', saveView:'Save', updateView:'Update', deleteView:'Delete', chooseView:'Choose a saved view', savedViewsHint:'The default map opens each time. Choose a saved view manually. Click Update to save your changes.', viewNameRequired:'Enter a view name.', viewNameTaken:'This name already exists. Select it and click Update, or choose another name.', viewSaved:'View saved.', viewLoaded:'View opened.', viewDeleted:'Saved view deleted.', viewStorageError:'Could not save views in this browser. Check storage access and available space.', viewReadError:'Could not read saved views. Stored data has not been changed.', confirmDeleteView:'Delete saved view', viewMissing:'Some locations are no longer in the sheet:', viewRouteMissing:'Some route points are no longer in the sheet:' });
     Object.assign(translations.ru, { cloudAccount:'Войти в онлайн-карту', cloudSignOut:'Выйти', cloudLocal:'Виды пока только в этом браузере.', cloudLoading:'Подключаю ваши виды…', cloudConnected:'Сохранение в аккаунте', cloudError:'Нет соединения с хранилищем. Изменения на карте остаются на экране. Повторите сохранение после подключения.', cloudConflict:'Этот вид изменён на другом устройстве. Список обновлён; ваши правки остались на карте. Откройте свежий вид или сохраните свои правки под новым названием.', cloudSignIn:'Войти через ChatGPT', cloudHint:'По умолчанию открывается обычная карта. Виды из аккаунта открываются вручную. Нажимайте «Обновить», чтобы сохранить правки.', exportViews:'Скачать виды', importViews:'Перенести из файла', importViewsDone:'Виды из файла сохранены.', importViewsError:'Не удалось прочитать файл видов. Выберите JSON-файл, скачанный с этой карты.', cloudListUpdated:'Список видов обновлён из аккаунта. Выберите вид, чтобы открыть его.' });
     Object.assign(translations.en, { cloudAccount:'Sign in to online map', cloudSignOut:'Sign out', cloudLocal:'Views are only in this browser for now.', cloudLoading:'Connecting to your views…', cloudConnected:'Saved in your account', cloudError:'Storage connection unavailable. Your map changes are still on screen. Reconnect and save again.', cloudConflict:'This view changed on another device. The list has been refreshed; your edits are still on the map. Open the latest view or save your edits under a new name.', cloudSignIn:'Sign in with ChatGPT', cloudHint:'The default map opens each time. Open account-backed views manually. Click Update to save your edits.', exportViews:'Download views', importViews:'Import file', importViewsDone:'Imported views saved.', importViewsError:'Could not read this views file. Choose a JSON file downloaded from this map.', cloudListUpdated:'The view list was refreshed from your account. Select a view to open it.' });
+    Object.assign(translations.ru,{estimatedArrival:'Прибытие ≈',arrivalTimeHint:'Время устройства · без остановок',routeCalculating:'Рассчитываю маршрут…'});
+    Object.assign(translations.en,{estimatedArrival:'Arrival ≈',arrivalTimeHint:'Your local time · no stops',routeCalculating:'Calculating route…'});
     let language = 'ru';
     try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
@@ -631,8 +637,23 @@ const nameI = find(['name','название','локация','место','lin
       return { path:markerShapes[category], fillColor:location.markerColor || color, fillOpacity:1, strokeColor:borderColor || '#ffffff', strokeWeight:borderColor ? 5 : 2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
     }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
+    function formatRouteArrival(departedAt, seconds) {
+      const departure = new Date(departedAt);
+      const arrival = new Date(departedAt + seconds * 1000);
+      const locale = language === 'ru' ? 'ru-RU' : 'en-US';
+      const time = new Intl.DateTimeFormat(locale, {hour:'numeric', minute:'2-digit', hour12:language === 'en', timeZoneName:'short'}).format(arrival);
+      const date = departure.toDateString() === arrival.toDateString() ? '' : new Intl.DateTimeFormat(locale, {
+        month:'short', day:'numeric', ...(departure.getFullYear() !== arrival.getFullYear() ? {year:'numeric'} : {})
+      }).format(arrival);
+      return {dateTime:arrival.toISOString(), text:date ? `${date}, ${time}` : time};
+    }
+    function renderRouteSummary(seconds, distance, departedAt) {
+      if (![seconds, distance, departedAt].every(Number.isFinite) || seconds < 0 || distance < 0) return;
+      const arrival = formatRouteArrival(departedAt, seconds);
+      document.querySelector('#routeResult').innerHTML = `<span class="route-time-icon">🚗</span><span class="route-time-details" data-seconds="${seconds}" data-distance="${distance}" data-departed-at="${departedAt}"><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, {maximumFractionDigits:1}).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small><small class="route-arrival">${t('estimatedArrival')} <time datetime="${arrival.dateTime}">${escapeHtml(arrival.text)}</time></small><small class="route-arrival-note">${t('arrivalTimeHint')}</small></span>`;
+    }
     function routeLetter(index) { return String.fromCharCode(65 + index); }
-    function clearBuiltRoute() { routeRequestVersion++; document.querySelector('.route')?.classList.remove('has-built-route'); document.querySelector('#routeResult')?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
+    function clearBuiltRoute() { routeRequestVersion++; document.querySelector('.route')?.classList.remove('has-built-route'); const routeResult = document.querySelector('#routeResult'); if (routeResult?.classList.contains('has-time')) routeResult.textContent = t('routeHint'); routeResult?.classList.remove('has-time'); if (directionsRenderer && map) { directionsRenderer.setMap(null); directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false }); } }
     function routePointFromInput(input) { const local = locations.find(location => location.name === input.value.trim()); if (local) return { lat:local.lat, lng:local.lng }; const lat = Number(input.dataset.routeLat); const lng = Number(input.dataset.routeLng); return input.value.trim() && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null; }
     const markerColorChoices = [
       { color:'#ef4444', ru:'Красный', en:'Red' },
@@ -746,7 +767,37 @@ const nameI = find(['name','название','локация','место','lin
       } catch (error) { document.querySelector('#routeResult').textContent = `${language === 'ru' ? 'Ошибка маршрута' : 'Route error'}: ${error.message}`; }
     }
     function openRouteInGoogleMaps() { const points = selectedRoutePoints(); if (points.length < 2) { document.querySelector('#routeResult').textContent = 'Выберите минимум 2 точки.'; return; } window.open(`https://www.google.com/maps/dir/${points.map(point => `${point.lat},${point.lng}`).join('/')}`, '_blank'); }
-    function buildRouteOnMap({ preserveViewport = false } = {}) { const requestVersion = ++routeRequestVersion; const routeResult = document.querySelector('#routeResult'); const points = selectedRoutePoints(); if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; } directionsRenderer.setOptions({ preserveViewport }); return directionsService.route({ origin:points[0], destination:points.at(-1), waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })), travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false }).then(result => { if (requestVersion !== routeRequestVersion) return; directionsRenderer.setDirections(result); const distance = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.distance?.value || 0), 0); const seconds = (result.routes[0]?.legs || []).reduce((total, leg) => total + (leg.duration?.value || 0), 0); document.querySelector('.route').classList.add('has-built-route'); routeResult.classList.add('has-time'); routeResult.innerHTML = `<span class="route-time-icon">🚗</span><span><small>${t('drivingTime')}</small><strong>${formatDuration(seconds)}</strong><small>${new Intl.NumberFormat(language, { maximumFractionDigits:1 }).format(distance / 1000)} ${language === 'ru' ? 'км' : 'km'}</small></span>`; saveUndoState(); }).catch(error => { if (requestVersion !== routeRequestVersion) return; console.error(error); clearBuiltRoute(); routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`; saveUndoState(); }); }
+    function buildRouteOnMap({ preserveViewport = false } = {}) {
+      const departedAt = Date.now();
+      const requestVersion = ++routeRequestVersion;
+      const routeResult = document.querySelector('#routeResult');
+      const points = selectedRoutePoints();
+      if (points.length < 2) { clearBuiltRoute(); routeResult.textContent = 'Выберите минимум 2 точки.'; return; }
+      routeResult.classList.remove('has-time');
+      routeResult.textContent = t('routeCalculating');
+      directionsRenderer.setOptions({ preserveViewport });
+      return directionsService.route({
+        origin:points[0], destination:points.at(-1),
+        waypoints:points.slice(1, -1).map(point => ({ location:point, stopover:true })),
+        travelMode:google.maps.TravelMode.DRIVING, optimizeWaypoints:false
+      }).then(result => {
+        if (requestVersion !== routeRequestVersion) return;
+        directionsRenderer.setDirections(result);
+        const legs = result.routes[0]?.legs || [];
+        const distance = legs.reduce((total, leg) => total + (leg.distance?.value || 0), 0);
+        const seconds = legs.reduce((total, leg) => total + (leg.duration?.value || 0), 0);
+        document.querySelector('.route').classList.add('has-built-route');
+        routeResult.classList.add('has-time');
+        renderRouteSummary(seconds, distance, departedAt);
+        saveUndoState();
+      }).catch(error => {
+        if (requestVersion !== routeRequestVersion) return;
+        console.error(error);
+        clearBuiltRoute();
+        routeResult.textContent = `Не удалось построить маршрут: ${error.message || error}`;
+        saveUndoState();
+      });
+    }
     function addLocationToRoute(index) { const location = locations[index]; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = location.name; target.dispatchEvent(new Event('input', { bubbles:true })); document.querySelector('#routeResult').textContent = `${location.name} added to route.`; }
     function hideLocation(index) { const location = locations[index]; if (!location) return; location.hidden = true; location.pinnedToMap = false; infoWindow.close(); renderList(document.querySelector('#search').value); document.querySelector('#status').textContent = `${location.name} скрыта с карты.`; }
     function addRoutePoint(point) { if (!point) return; const inputs = [...document.querySelectorAll('[data-route-point]')]; const target = inputs.find(input => !input.value.trim()) || (() => { document.querySelector('#addRoutePoint').click(); return [...document.querySelectorAll('[data-route-point]')].at(-1); })(); target.value = point.routeLabel; target.dispatchEvent(new Event('input', { bubbles:true })); target.dataset.routeLat = point.lat; target.dataset.routeLng = point.lng; document.querySelector('#routeResult').textContent = `${point.routeLabel} added to route.`; }
@@ -1244,6 +1295,8 @@ const nameI = find(['name','название','локация','место','lin
     const originalApplyLanguage = applyLanguage;
     applyLanguage = function() {
       originalApplyLanguage();
+      const summary = document.querySelector('#routeResult.has-time .route-time-details');
+      if (summary) renderRouteSummary(Number(summary.dataset.seconds), Number(summary.dataset.distance), Number(summary.dataset.departedAt));
       renderSavedMapViews();
       const reverseButton = document.querySelector('#reverseRoute');
       reverseButton.title = language === 'ru' ? 'Развернуть маршрут' : 'Reverse route';
