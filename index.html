@@ -690,7 +690,7 @@ const nameI = find(['name','название','локация','место','lin
       const isWh = String(location.locationType || '').trim().toUpperCase() === 'WH';
       const color = usesMarketColor(location) ? marketColor(location) : cxStatus.includes('not started') ? '#111827' : /pending|on[ -]?hold/.test(`${status} ${cxStatus}`) ? '#ef3f35' : /issue/.test(`${status} ${cxStatus}`) ? '#f2b01e' : isWh ? '#2563eb' : active ? '#9bdc28' : status && !status.includes('completed') ? '#f2b01e' : '#7c3aed';
       const category = isWh ? 'warehouse' : color === '#111827' ? 'notStarted' : color === '#ef3f35' ? 'paused' : color === '#f2b01e' ? 'issue' : active ? 'active' : 'completed';
-      const borderColor = usesMarketBorder(location) || (category === 'issue' && marketKey(location)) ? marketColor(location) : null;
+      const borderColor = usesMarketBorder(location) || (['active','issue'].includes(category) && marketKey(location)) ? marketColor(location) : null;
       return { path:markerShapes[category], fillColor:location.markerColor || color, fillOpacity:1, strokeColor:borderColor || '#ffffff', strokeWeight:borderColor ? 5 : 2, scale:highlighted ? 1.2 : 0.75, anchor:new google.maps.Point(0,0) };
     }
     function formatDuration(seconds) { const minutes = Math.max(1, Math.round(seconds / 60)); const hours = Math.floor(minutes / 60); return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`; }
