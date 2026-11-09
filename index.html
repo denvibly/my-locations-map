@@ -275,8 +275,8 @@
     Object.assign(translations.en,{routePlanHeading:'Plan your trip',routePlanDeparture:'Depart at',routePlanArrival:'Arrive by',routePlanReset:'Reset',routePlanResetHint:'Return to departure when the route was built',routePlanHint:'Edit either field to recalculate the other. Uses the driving time above, rounded to minutes.',plannedArrival:'Planned arrival ≈',invalidPlanTime:'Choose a valid date and time in your device time zone.',planDeparturePast:'The calculated departure time has already passed.'});
     Object.assign(translations.ru,{temporaryNameButton:'Задать временное название',temporaryNamePrompt:'Временное название, до 80 символов (до перезагрузки). Пустое поле — убрать название:',temporaryNameNote:'Временное название · до перезагрузки',temporaryNameSet:'Временное название задано.',temporaryNameRemoved:'Временное название убрано.'});
     Object.assign(translations.en,{temporaryNameButton:'Give a temporary name',temporaryNamePrompt:'Temporary name, up to 80 characters (until reload). Leave blank to remove:',temporaryNameNote:'Temporary name · until reload',temporaryNameSet:'Temporary name set.',temporaryNameRemoved:'Temporary name removed.'});
-    Object.assign(translations.ru,{custom3:'Custom Filter 2'});
-    Object.assign(translations.en,{custom3:'Custom Filter 2'});
+    Object.assign(translations.ru,{customFilter2:'Custom Filter 2'});
+    Object.assign(translations.en,{customFilter2:'Custom Filter 2'});
     let language = 'ru';
     try { const storedLanguage = localStorage.getItem('locations-map-language'); if (['ru','en'].includes(storedLanguage)) language = storedLanguage; } catch {}
     const t = key => translations[language][key] || key;
@@ -450,7 +450,7 @@ const nameI = find(['name','название','локация','место','lin
       return fromRows(parseCsv(await response.text()));
     }
 
-    const filterFields = [{key:'status', labelKey:'status'}, {key:'locationType', labelKey:'locationType'}, {key:'crewLead', labelKey:'crewLead'}, {key:'marketState', labelKey:'marketState'}, {key:'custom', labelKey:'custom'}, {key:'custom3', labelKey:'custom3'}, {key:'project', labelKey:'project'}];
+    const filterFields = [{key:'status', labelKey:'status'}, {key:'locationType', labelKey:'locationType'}, {key:'crewLead', labelKey:'crewLead'}, {key:'marketState', labelKey:'marketState'}, {key:'custom', labelKey:'custom'}, {key:'custom3', labelKey:'customFilter2'}, {key:'project', labelKey:'project'}];
     function setupFilters() {
       document.querySelector('#filters').innerHTML = filterFields.map(field => `<div class="filter-menu" data-menu="${field.key}"><button type="button" class="filter-button" data-filter-button="${field.key}">${fieldLabel(field)}</button><div class="filter-panel"><input class="filter-search" data-filter-search="${field.key}" placeholder="${t('filterSearch')} ${fieldLabel(field)}…">${[...new Set(locations.map(x => x[field.key]).filter(Boolean))].sort((a,b) => a.localeCompare(b)).map(value => `<label class="filter-option"><input type="checkbox" data-filter-value="${field.key}" value="${escapeHtml(value)}"><span>${escapeHtml(value)}</span></label>`).join('')}</div></div>`).join('') + `<div class="date-filter"><label for="startAfterDate">${t('startAfter')}</label><input id="startAfterDate" type="date"></div>`;
       document.querySelectorAll('[data-filter-button]').forEach(button => button.addEventListener('click', () => { const menu = button.closest('.filter-menu'); document.querySelectorAll('.filter-menu.open').forEach(other => { if (other !== menu) other.classList.remove('open'); }); menu.classList.toggle('open'); }));
